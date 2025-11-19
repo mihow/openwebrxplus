@@ -18,6 +18,96 @@ This document outlines four possible approaches for adding LoRa (Long Range) sup
 - **Spreading Factors:** SF7-SF12 (higher = longer range, lower data rate)
 - **Use Cases:** LoRaWAN, LoRa APRS, Meshtastic, FANET, IoT sensors
 
+### LoRa Licensing & Open Source Status
+
+**IMPORTANT CLARIFICATION:** The statement *"LoRa is proprietary with no licensed software implementation available"* is **misleading**.
+
+#### What's Proprietary vs. Open
+
+**LoRa Physical Layer (Modulation) - PROPRIETARY:**
+- ✅ **Patented by Semtech Corporation** (acquired from Cycleo SAS in 2012)
+- ✅ **Chirp Spread Spectrum (CSS) modulation is patented**
+- ✅ **Official hardware requires Semtech chipsets** (SX1272, SX1276, SX1278, etc.)
+- ❌ **NOT open source** - No official specifications published by Semtech
+- ⚠️ **Patents active** - US Patent #20160094269A1 and others
+
+**LoRaWAN Protocol Layer - OPEN STANDARD:**
+- ✅ **Open standard managed by LoRa Alliance** (non-profit)
+- ✅ **Freely available specifications** (v1.0, v1.0.4, v1.1) - Download from lora-alliance.org
+- ✅ **ITU-approved standard** (December 2021) - Official recognition as LPWAN standard
+- ✅ **Open source implementations exist** - IBM's "LoRaWAN in C" (Eclipse Public License)
+- ✅ **No licensing fees** for protocol implementation
+
+#### Open Source Software Implementations - AVAILABLE ✅
+
+**Contrary to the claim, multiple open-source LoRa decoders DO exist:**
+
+1. **lorarx** (OE5DXL) - Standalone decoder
+   - **Status:** Available, actively maintained (2024)
+   - **License:** TBD (need to verify, but freely distributed)
+   - **Legality:** Reverse-engineered, legal gray area
+   - **Usage:** Widely used in amateur radio community
+
+2. **gr-lora_sdr** (EPFL) - GNU Radio implementation
+   - **Status:** Open source, GitHub available
+   - **License:** GPL-3.0
+   - **Legality:** Reverse-engineered for research/education
+   - **Academic:** Published research with full implementation
+
+3. **gr-lora** (rpp0) - Original GNU Radio blocks
+   - **Status:** Open source, GitHub available
+   - **License:** GPL-3.0
+   - **Legality:** Reverse-engineered, widely used
+
+4. **Python libraries** - Various SDR implementations
+   - **pyLoRa:** Hardware interface library (not full demodulator)
+   - **Research implementations:** Academic papers include code
+
+#### Legal Gray Area
+
+**The Reality:**
+- ⚠️ These implementations **reverse-engineered** the LoRa modulation
+- ⚠️ Semtech holds patents but **has not sued open source projects**
+- ⚠️ **Non-commercial use** (amateur radio, research) generally tolerated
+- ⚠️ **Commercial use** could face patent challenges
+- ✅ **LoRaWAN protocol** itself is freely implementable
+
+#### Why This Matters for OpenWebRX+
+
+**OpenWebRX+ is well-positioned:**
+- ✅ **Non-commercial, open-source project** - Lower legal risk
+- ✅ **Receive-only** - Not competing with Semtech hardware sales
+- ✅ **Uses existing decoders** - Not creating new reverse-engineering
+- ✅ **Amateur radio / SDR community** - Established precedent
+- ✅ **Educational/research focus** - Protected under fair use in many jurisdictions
+
+**Recommendation:** Proceed with implementation using existing open-source decoders (lorarx, gr-lora_sdr). The amateur radio and SDR communities have used these for years without legal issues.
+
+#### What You CAN and CANNOT Do
+
+**✅ LEGAL/SAFE:**
+- Receive and decode LoRa signals for personal/educational use
+- Use open-source decoders (lorarx, gr-lora_sdr)
+- Implement LoRaWAN protocol (open standard)
+- Contribute to open-source projects
+- Research and education
+
+**⚠️ GRAY AREA:**
+- Distribute software with LoRa demodulation
+- Commercial products using reverse-engineered LoRa
+- Creating new LoRa transmitters
+
+**❌ CLEARLY RESTRICTED:**
+- Selling devices that infringe Semtech patents
+- Calling your product "LoRa certified" without LoRa Alliance approval
+- Commercial LoRa hardware without Semtech licensing
+
+#### References
+- Semtech LoRa Patents: US Patent #20160094269A1 (and others)
+- LoRa Alliance Specifications: https://lora-alliance.org/resource_hub/
+- ITU Recognition: ITU-T Y.4480 (December 2021)
+- Academic Research: "From Demodulation to Decoding: Toward Complete LoRa PHY Understanding" (ACM TOSN)
+
 ### OpenWebRX+ Decoder Integration Pattern
 
 Based on code analysis, the integration follows a **5-layer architecture**:

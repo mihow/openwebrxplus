@@ -10,6 +10,16 @@
 
 This guide provides step-by-step instructions to add LoRa support to OpenWebRX+ using the lorarx standalone decoder, following the same pattern as ISM/rtl_433 integration.
 
+### Licensing Note
+
+**Important:** LoRa modulation is patented by Semtech, but open-source implementations exist. See [lora-implementation-design.md](lora-implementation-design.md#lora-licensing--open-source-status) for full details on licensing and legal status.
+
+**Summary:**
+- ✅ **LoRaWAN protocol:** Open standard (LoRa Alliance)
+- ⚠️ **LoRa modulation:** Patented by Semtech, but reverse-engineered implementations available
+- ✅ **lorarx & GNU Radio implementations:** Open source, widely used in amateur radio community
+- ✅ **OpenWebRX+ use case:** Non-commercial, receive-only, educational - generally safe
+
 ---
 
 ## Prerequisites

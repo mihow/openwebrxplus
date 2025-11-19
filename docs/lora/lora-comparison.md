@@ -1,5 +1,9 @@
 # LoRa Implementation Options - Detailed Comparison
 
+**Licensing Note:** LoRa modulation is patented by Semtech, but LoRaWAN protocol is an open standard. Multiple open-source decoder implementations exist (lorarx, gr-lora_sdr, gr-lora). See [lora-implementation-design.md](lora-implementation-design.md#lora-licensing--open-source-status) for full licensing details. OpenWebRX+ use case (non-commercial, receive-only, educational) is generally considered safe.
+
+---
+
 ## Architecture Diagrams
 
 ### Option 1: lorarx (Standalone Binary) ⭐ RECOMMENDED
