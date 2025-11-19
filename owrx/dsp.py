@@ -741,6 +741,9 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
         elif mod == "ism":
             from csdr.chain.toolbox import IsmDemodulator
             return IsmDemodulator(250000)
+        elif mod == "lora":
+            from csdr.chain.toolbox import LoraDemodulator
+            return LoraDemodulator(250000)
         elif mod == "wmbus":
             # WMBus likes 1.2Msps, which does not work for other ISM
             from csdr.chain.toolbox import IsmDemodulator

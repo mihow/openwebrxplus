@@ -16,6 +16,23 @@ class Rtl433Module(ExecModule):
         super().__init__(Format.COMPLEX_FLOAT, Format.CHAR, cmd)
 
 
+class LoraRxModule(ExecModule):
+    def __init__(self, sampleRate: int = 250000, jsonOutput: bool = True):
+        cmd = [
+            "lorarx", "-i", "/dev/stdin", "-f", "f32",
+            "-b", "7",  # Bandwidth 125kHz (7=125kHz)
+            "-s", "12",  # Spreading factor SF12
+            "-s", "10",  # Also decode SF10
+            "-s", "7",   # Also decode SF7
+            "-Q",  # Only output frames with valid CRC
+            "-w", "64",  # Downsample FIR length
+            "-r", str(sampleRate),  # Input sample rate
+        ]
+        if jsonOutput:
+            cmd += ["-j", "/dev/stdout"]  # JSON output to stdout
+        super().__init__(Format.COMPLEX_FLOAT, Format.CHAR, cmd)
+
+
 class MultimonModule(ExecModule):
     def __init__(self, decoders: list[str]):
         pm  = Config.get()

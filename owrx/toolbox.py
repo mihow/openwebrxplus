@@ -147,6 +147,34 @@ class IsmParser(TextParser):
         return out
 
 
+class LoraParser(TextParser):
+    def __init__(self, service: bool = False):
+        # Colors will be assigned via this cache
+        self.colors = ColorCache()
+        # Construct parent object
+        super().__init__(filePrefix="LORA", service=service)
+
+    def parse(self, msg: bytes):
+        # Expect JSON data in text form
+        out = json.loads(msg)
+        # Add mode name
+        out["mode"] = "LoRa"
+        # Add timestamp if not present (lorarx doesn't include timestamp by default)
+        if "timestamp" not in out:
+            out["timestamp"] = int(datetime.now(timezone.utc).timestamp() * 1000)
+        # Add frequency, if known
+        if self.frequency:
+            out["freq"] = self.frequency
+        # Report message
+        ReportingEngine.getSharedInstance().spot(out)
+        # In interactive mode, color messages based on sender (use 'from' or 'devaddr')
+        if not self.service:
+            sender_id = out.get("from", out.get("devaddr", "unknown"))
+            out["color"] = self.colors.getColor(str(sender_id))
+        # Always return JSON data
+        return out
+
+
 class PageParser(TextParser):
     def __init__(self, service: bool = False):
         # When true, try filtering out unreadable messages

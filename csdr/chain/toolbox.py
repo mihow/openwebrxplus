@@ -1,8 +1,8 @@
 from csdr.chain.demodulator import ServiceDemodulator, DialFrequencyReceiver
-from csdr.module.toolbox import Rtl433Module, MultimonModule, DumpHfdlModule, DumpVdl2Module, Dump1090Module, AcarsDecModule, RedseaModule, SatDumpModule, CwSkimmerModule, LameModule
+from csdr.module.toolbox import Rtl433Module, LoraRxModule, MultimonModule, DumpHfdlModule, DumpVdl2Module, Dump1090Module, AcarsDecModule, RedseaModule, SatDumpModule, CwSkimmerModule, LameModule
 from pycsdr.modules import FmDemod, AudioResampler, Convert, Agc, Squelch, RealPart, SnrSquelch
 from pycsdr.types import Format
-from owrx.toolbox import TextParser, PageParser, SelCallParser, EasParser, IsmParser, RdsParser, CwSkimmerParser, Mp3Recorder
+from owrx.toolbox import TextParser, PageParser, SelCallParser, EasParser, IsmParser, LoraParser, RdsParser, CwSkimmerParser, Mp3Recorder
 from owrx.aircraft import HfdlParser, Vdl2Parser, AdsbParser, AcarsParser
 from owrx.config import Config
 
@@ -20,6 +20,27 @@ class IsmDemodulator(ServiceDemodulator, DialFrequencyReceiver):
         self.parser = IsmParser(service=service)
         workers = [
             Rtl433Module(self.sampleRate, jsonOutput = True),
+            self.parser,
+        ]
+        # Connect all the workers
+        super().__init__(workers)
+
+    def getFixedAudioRate(self) -> int:
+        return self.sampleRate
+
+    def supportsSquelch(self) -> bool:
+        return False
+
+    def setDialFrequency(self, frequency: int) -> None:
+        self.parser.setDialFrequency(frequency)
+
+
+class LoraDemodulator(ServiceDemodulator, DialFrequencyReceiver):
+    def __init__(self, sampleRate: int = 250000, service: bool = False):
+        self.sampleRate = sampleRate
+        self.parser = LoraParser(service=service)
+        workers = [
+            LoraRxModule(self.sampleRate, jsonOutput = True),
             self.parser,
         ]
         # Connect all the workers

@@ -257,6 +257,16 @@ class Modes(object):
             squelch=False
         ),
         DigitalMode(
+            "lora",
+            "LoRa",
+            underlying=["empty"],
+            bandpass=None,
+            ifRate=250000,
+            requirements=["lora"],
+            service=True,
+            squelch=False
+        ),
+        DigitalMode(
             "wmbus",
             "WMBus",
             underlying=["empty"],
