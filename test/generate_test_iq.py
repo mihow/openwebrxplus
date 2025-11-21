@@ -164,18 +164,26 @@ def generate_cw_signal(
     dit_duration = 1.2 / wpm  # Standard timing
     dah_duration = 3 * dit_duration
 
+    # Track phase across all elements for phase continuity
+    phase = 0
+
     def generate_element(duration, on=True):
         """Generate dit or dah or silence."""
+        nonlocal phase
         num_samples = int(sample_rate * duration)
         for i in range(num_samples):
-            t = i / sample_rate
             if on:
-                phase = 2 * math.pi * carrier_freq * t
                 i_sample = amplitude * math.cos(phase)
                 q_sample = amplitude * math.sin(phase)
+                # Advance phase
+                phase += 2 * math.pi * carrier_freq / sample_rate
+                # Keep phase in reasonable range
+                if phase > 2 * math.pi:
+                    phase -= 2 * math.pi
             else:
                 i_sample = 0.0
                 q_sample = 0.0
+                # Don't advance phase during silence
             yield (i_sample, q_sample)
 
     # Convert text to uppercase

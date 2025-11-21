@@ -74,7 +74,8 @@ jobs:
           docker run --rm openwebrx-test python -m unittest \
             test.test_integration_file_source.TestIQFileValidity \
             test.test_integration_file_source.TestFileSourceCommand \
-            test.test_file_source -v
+            test.test_file_source \
+            test.test_demodulator_integration -v
 
   # Syntax and import checks for all source files
   code-quality:
