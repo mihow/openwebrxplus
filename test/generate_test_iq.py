@@ -90,6 +90,42 @@ def generate_am_signal(
         yield (i_sample, q_sample)
 
 
+def generate_fm_signal(
+    carrier_freq: float,
+    mod_freq: float,
+    sample_rate: int,
+    duration: float,
+    amplitude: float = 0.5,
+    deviation: float = 75000
+):
+    """
+    Generate FM modulated signal.
+
+    Args:
+        carrier_freq: Carrier frequency offset from center (Hz)
+        mod_freq: Modulation frequency (Hz)
+        sample_rate: Sample rate (Hz)
+        duration: Duration in seconds
+        amplitude: Signal amplitude (0-1)
+        deviation: Frequency deviation in Hz (75kHz for broadcast FM)
+
+    Yields:
+        Tuples of (I, Q) float samples
+    """
+    num_samples = int(sample_rate * duration)
+    phase = 0
+    for i in range(num_samples):
+        t = i / sample_rate
+        # FM: instantaneous frequency = fc + kf * m(t)
+        # Phase is integral of frequency
+        mod_signal = math.sin(2 * math.pi * mod_freq * t)
+        inst_freq = carrier_freq + deviation * mod_signal
+        phase += 2 * math.pi * inst_freq / sample_rate
+        i_sample = amplitude * math.cos(phase)
+        q_sample = amplitude * math.sin(phase)
+        yield (i_sample, q_sample)
+
+
 def write_cf32(filename: str, samples):
     """
     Write IQ samples to a complex float32 file.
@@ -119,12 +155,14 @@ def main():
                         help='Sample rate in Hz')
     parser.add_argument('--duration', '-d', type=float, default=5.0,
                         help='Duration in seconds')
-    parser.add_argument('--signal', choices=['tone', 'noise', 'am', 'tone_noise'],
+    parser.add_argument('--signal', choices=['tone', 'noise', 'am', 'fm', 'tone_noise'],
                         default='tone', help='Signal type')
     parser.add_argument('--frequency', '-f', type=float, default=1000,
-                        help='Tone frequency offset from center (Hz)')
+                        help='Tone/carrier frequency offset from center (Hz)')
     parser.add_argument('--center-freq', type=int, default=14074000,
                         help='Center frequency for metadata (Hz)')
+    parser.add_argument('--deviation', type=float, default=75000,
+                        help='FM frequency deviation in Hz (default 75kHz for broadcast)')
 
     args = parser.parse_args()
 
@@ -145,6 +183,12 @@ def main():
     elif args.signal == 'am':
         samples = generate_am_signal(args.frequency, 400, args.sample_rate, args.duration)
         description = f"AM signal at {args.frequency}Hz with 400Hz modulation"
+    elif args.signal == 'fm':
+        samples = generate_fm_signal(
+            args.frequency, 1000, args.sample_rate, args.duration,
+            deviation=args.deviation
+        )
+        description = f"FM signal at {args.frequency}Hz, {args.deviation/1000}kHz deviation"
     elif args.signal == 'tone_noise':
         # Combine tone and noise
         def combined():
