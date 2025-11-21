@@ -30,9 +30,10 @@ Implemented **FileSource** - a new SDR source type that plays back recorded IQ f
 
 ### 2. Test Signal Generator (`test/generate_test_iq.py`)
 Generate synthetic IQ files without SDR hardware:
-- **Signals:** Tone, AM, FM, Noise, Tone+Noise
+- **Signals:** Tone, AM, FM, CW/Morse, Noise, Tone+Noise
 - **Any sample rate:** 48kHz to 2.4MHz+
 - **Configurable FM deviation** (default 75kHz for broadcast)
+- **CW with standard timing** (dit/dah units, configurable WPM)
 - **Auto-generated metadata** (JSON sidecar files)
 
 Example:
@@ -46,14 +47,22 @@ python test/generate_test_iq.py --signal fm --frequency 100000 \
 ### 3. Sample Test Files
 - `test_tone_1khz.cf32` - 48kHz, 2s tone for basic testing
 - `test_fm_240k.cf32` - 240kHz FM signal with 75kHz deviation
+- `test_cw.cf32` - 48kHz CW signal "CQ DE W1AW" at 20 WPM
 
-### 4. CI/CD Workflow (`.github/workflows/test.yml`)
+### 4. Demodulator Integration Tests (`test/test_demodulator_integration.py`)
+Automated tests that validate signal characteristics:
+- **Tone detection** - Verifies signal magnitude and absence of silence
+- **FM modulation** - Detects frequency modulation variance
+- **CW keying** - Validates on/off transitions and Morse code timing
+- **pycsdr integration** - Tests DSP library can process IQ format
+
+### 5. CI/CD Workflow (`.github/workflows/test.yml`)
 - **Unit tests** on Python 3.9, 3.10, 3.11
-- **Integration tests** in Docker with pycsdr
+- **Integration tests** in Docker with pycsdr (includes demodulator tests)
 - **Code quality** checks (flake8, black)
-- All tests passing ✅
+- All 109 tests passing ✅
 
-### 5. Comprehensive Documentation
+### 6. Comprehensive Documentation
 - Design document (`docs/claude/iq-file-testing.md`)
 - Usage guide (`test_data/iq/README.md`)
 - Integration test suite
@@ -111,14 +120,20 @@ python test/generate_test_iq.py --signal fm --frequency 500000 \
 # AM signal
 python test/generate_test_iq.py --signal am --frequency 5000 \
     --sample-rate 48000 --duration 2 -o test_data/iq/am_test.cf32
+
+# CW/Morse code
+python test/generate_test_iq.py --signal cw --frequency 700 \
+    --sample-rate 48000 --text "CQ DE W1AW" --wpm 20 \
+    --center-freq 14070000 -o test_data/iq/cw_test.cf32
 ```
 
 ## Test Results
 
-✅ **105 tests passing** (102 pass, 3 skip locally without pycsdr)
+✅ **109 tests passing** (105 pass, 4 skip locally without pycsdr/pv/nmux)
 ✅ **CI/CD passing** on all Python versions
 ✅ **IQ format validated** - Correct complex float32 structure
-✅ **All signal types verified** - Tone, AM, FM, Noise working
+✅ **All signal types verified** - Tone, AM, FM, CW, Noise working
+✅ **Demodulator tests passing** - Signal characteristics validated
 
 ## Dependencies
 
@@ -142,6 +157,9 @@ python -m unittest discover test -v
 
 # Run integration tests only
 python -m unittest test.test_integration_file_source test.test_file_source -v
+
+# Run demodulator tests
+python -m unittest test.test_demodulator_integration -v
 ```
 
 ## Files Changed
@@ -151,6 +169,7 @@ python -m unittest test.test_integration_file_source test.test_file_source -v
 - `test/generate_test_iq.py` - Signal generator
 - `test/test_file_source.py` - Unit tests
 - `test/test_integration_file_source.py` - Integration tests
+- `test/test_demodulator_integration.py` - Demodulator signal validation tests
 - `test/test_core_modules.py` - Core module tests
 - `test_data/iq/*` - Test files and documentation
 - `.github/workflows/test.yml` - CI/CD workflow
