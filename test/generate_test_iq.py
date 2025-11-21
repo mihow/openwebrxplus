@@ -12,6 +12,19 @@ import argparse
 import json
 from pathlib import Path
 
+# International Morse Code
+MORSE_CODE = {
+    'A': '.-',    'B': '-...',  'C': '-.-.',  'D': '-..',   'E': '.',
+    'F': '..-.',  'G': '--.',   'H': '....',  'I': '..',    'J': '.---',
+    'K': '-.-',   'L': '.-..',  'M': '--',    'N': '-.',    'O': '---',
+    'P': '.--.',  'Q': '--.-',  'R': '.-.',   'S': '...',   'T': '-',
+    'U': '..-',   'V': '...-',  'W': '.--',   'X': '-..-',  'Y': '-.--',
+    'Z': '--..',
+    '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+    '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+    '/': '-..-.',  '?': '..--..', ' ': ' '
+}
+
 
 def generate_tone(frequency: float, sample_rate: int, duration: float, amplitude: float = 0.5):
     """
@@ -126,6 +139,70 @@ def generate_fm_signal(
         yield (i_sample, q_sample)
 
 
+def generate_cw_signal(
+    carrier_freq: float,
+    sample_rate: int,
+    text: str,
+    wpm: int = 20,
+    amplitude: float = 0.5
+):
+    """
+    Generate CW (Morse code) signal.
+
+    Args:
+        carrier_freq: Carrier frequency offset from center (Hz)
+        sample_rate: Sample rate (Hz)
+        text: Text to encode in Morse code
+        wpm: Words per minute (default 20)
+        amplitude: Signal amplitude (0-1)
+
+    Yields:
+        Tuples of (I, Q) float samples
+    """
+    # Standard timing: PARIS = 50 dit units, so 1 WPM = 50 dits/min
+    # Dit duration in seconds
+    dit_duration = 1.2 / wpm  # Standard timing
+    dah_duration = 3 * dit_duration
+
+    def generate_element(duration, on=True):
+        """Generate dit or dah or silence."""
+        num_samples = int(sample_rate * duration)
+        for i in range(num_samples):
+            t = i / sample_rate
+            if on:
+                phase = 2 * math.pi * carrier_freq * t
+                i_sample = amplitude * math.cos(phase)
+                q_sample = amplitude * math.sin(phase)
+            else:
+                i_sample = 0.0
+                q_sample = 0.0
+            yield (i_sample, q_sample)
+
+    # Convert text to uppercase
+    text = text.upper()
+
+    for char in text:
+        if char not in MORSE_CODE:
+            continue
+
+        morse = MORSE_CODE[char]
+
+        if morse == ' ':
+            # Word space = 7 dit units (4 more after letter space)
+            yield from generate_element(4 * dit_duration, on=False)
+        else:
+            for symbol in morse:
+                if symbol == '.':
+                    yield from generate_element(dit_duration, on=True)
+                elif symbol == '-':
+                    yield from generate_element(dah_duration, on=True)
+                # Inter-element space (between dits/dahs) = 1 dit
+                yield from generate_element(dit_duration, on=False)
+
+            # Inter-character space = 3 dit units (2 more after inter-element)
+            yield from generate_element(2 * dit_duration, on=False)
+
+
 def write_cf32(filename: str, samples):
     """
     Write IQ samples to a complex float32 file.
@@ -155,7 +232,7 @@ def main():
                         help='Sample rate in Hz')
     parser.add_argument('--duration', '-d', type=float, default=5.0,
                         help='Duration in seconds')
-    parser.add_argument('--signal', choices=['tone', 'noise', 'am', 'fm', 'tone_noise'],
+    parser.add_argument('--signal', choices=['tone', 'noise', 'am', 'fm', 'cw', 'tone_noise'],
                         default='tone', help='Signal type')
     parser.add_argument('--frequency', '-f', type=float, default=1000,
                         help='Tone/carrier frequency offset from center (Hz)')
@@ -163,6 +240,10 @@ def main():
                         help='Center frequency for metadata (Hz)')
     parser.add_argument('--deviation', type=float, default=75000,
                         help='FM frequency deviation in Hz (default 75kHz for broadcast)')
+    parser.add_argument('--text', type=str, default='CQ DE TEST',
+                        help='Text to encode in Morse code (CW mode only)')
+    parser.add_argument('--wpm', type=int, default=20,
+                        help='Words per minute for CW (default 20)')
 
     args = parser.parse_args()
 
@@ -189,6 +270,12 @@ def main():
             deviation=args.deviation
         )
         description = f"FM signal at {args.frequency}Hz, {args.deviation/1000}kHz deviation"
+    elif args.signal == 'cw':
+        samples = generate_cw_signal(
+            args.frequency, args.sample_rate, args.text, wpm=args.wpm
+        )
+        description = f"CW signal '{args.text}' at {args.wpm} WPM"
+        # Don't use --duration for CW, text length determines duration
     elif args.signal == 'tone_noise':
         # Combine tone and noise
         def combined():
