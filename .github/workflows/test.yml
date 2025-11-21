@@ -59,16 +59,17 @@ jobs:
 
       - name: Run integration tests
         run: |
-          docker run --rm openwebrx-test sh -c "
-            echo '=== Environment ===' &&
-            python --version &&
-            which pv nmux &&
-            python -c 'from pycsdr.modules import Buffer; print(\"pycsdr: OK\")' &&
-            echo '=== Test files ===' &&
-            ls -la test_data/iq/ &&
-            echo '=== Running integration tests only ===' &&
+          docker run --rm openwebrx-test sh -c '
+            echo "=== Environment ==="
+            python --version
+            echo "pv:" && (which pv || echo "not found")
+            echo "nmux:" && (which nmux || echo "not found")
+            python -c "from pycsdr.modules import Buffer; print(\"pycsdr: OK\")" || echo "pycsdr: FAILED"
+            echo "=== Test files ==="
+            ls -la test_data/iq/
+            echo "=== Running integration tests ==="
             python -m unittest test.test_integration_file_source test.test_file_source -v
-          "
+          '
 
   # Syntax and import checks for all source files
   code-quality:
