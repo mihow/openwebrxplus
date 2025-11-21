@@ -437,5 +437,10 @@ defaultConfig = PropertyLayer(
     ssb_agc_profile="Fast",
     dab_output_rate=48000,
     ui_theme="default",
-    bot_ban_enabled=True
+    bot_ban_enabled=True,
+    # Signal classifier settings
+    signal_classifier_enabled=False,
+    signal_classifier_threshold=0.5,
+    signal_classifier_interval=1.0,
+    signal_classifier_device="cpu",
 ).readonly()

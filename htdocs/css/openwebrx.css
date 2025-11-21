@@ -1979,3 +1979,63 @@ img.openwebrx-mirror-img
     max-height: 0;
 }
 
+
+/* Signal Classification Panel */
+#openwebrx-panel-classification {
+    width: 200px;
+    padding: 10px;
+}
+
+.classification-header {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 8px;
+    font-size: 11pt;
+    text-align: center;
+}
+
+.classification-predictions {
+    min-height: 60px;
+}
+
+.classification-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 10pt;
+}
+
+.classification-mode {
+    width: 60px;
+    color: #5ca8ff;
+    font-weight: bold;
+}
+
+.classification-bar-container {
+    flex: 1;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    margin: 0 8px;
+    overflow: hidden;
+}
+
+.classification-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.classification-confidence {
+    width: 40px;
+    text-align: right;
+    color: #ccc;
+    font-size: 9pt;
+}
+
+.no-prediction {
+    color: #888;
+    font-style: italic;
+    font-size: 10pt;
+}

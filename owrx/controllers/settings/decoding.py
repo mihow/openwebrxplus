@@ -251,4 +251,32 @@ class DecodingSettingsController(SettingsFormController):
                 ),
                 Q65ModeMatrix("q65_enabled_combinations", "Enabled Q65 Mode combinations"),
             ),
+            Section(
+                "Signal classifier",
+                CheckboxInput(
+                    "signal_classifier_enabled",
+                    "Enable automatic signal classification using TorchSig",
+                    infotext="Uses machine learning to predict the modulation type of the currently tuned signal",
+                ),
+                NumberInput(
+                    "signal_classifier_threshold",
+                    "Confidence threshold",
+                    infotext="Only show predictions with confidence above this threshold (0.0-1.0)",
+                ),
+                NumberInput(
+                    "signal_classifier_interval",
+                    "Classification interval",
+                    infotext="How often to run classification on the current signal",
+                    append="s",
+                ),
+                DropdownInput(
+                    "signal_classifier_device",
+                    "Inference device",
+                    options=[
+                        Option("cpu", "CPU - Compatible with all systems"),
+                        Option("cuda", "CUDA - NVIDIA GPU acceleration"),
+                    ],
+                    infotext="Use CUDA for faster inference if you have an NVIDIA GPU with CUDA support",
+                ),
+            ),
         ]
