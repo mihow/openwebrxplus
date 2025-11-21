@@ -197,6 +197,34 @@ which python3
 /usr/bin/python3 -m pip install git+https://github.com/TorchDSP/torchsig.git
 ```
 
+## Docker Installation (Advanced)
+
+TorchSig provides official Docker images with CUDA support. This can be useful for:
+- Development/testing environments
+- GPU-accelerated deployments
+- Avoiding dependency conflicts
+
+### Using TorchSig Docker Image
+
+```bash
+# Pull or build TorchSig image
+git clone https://github.com/TorchDSP/torchsig.git
+cd torchsig
+docker build -t torchsig:latest .
+
+# Run with GPU support
+docker run --gpus all -it torchsig:latest
+```
+
+### Integration with OpenWebRX+ Docker
+
+For Docker-based OpenWebRX+ deployments, you can extend the TorchSig base image or copy the installed packages. The TorchSig Dockerfile uses:
+- Base: `nvidia/cuda:12.1.0-runtime-ubuntu22.04`
+- Python 3.10
+- Pre-compiled Rust extensions for performance
+
+See the [TorchSig Dockerfile](https://github.com/TorchDSP/torchsig/blob/main/Dockerfile) for implementation details.
+
 ## Uninstallation
 
 ```bash
