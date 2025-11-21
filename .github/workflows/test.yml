@@ -1,0 +1,89 @@
+name: Tests
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main, develop]
+
+jobs:
+  # Basic tests that don't require SDR dependencies
+  unit-tests:
+    name: Unit Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Check Python syntax
+        run: |
+          find owrx csdr -name "*.py" | xargs python -m py_compile
+
+      - name: Lint with flake8
+        run: |
+          # Stop on syntax errors or undefined names
+          flake8 owrx csdr --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warnings (non-blocking)
+          flake8 owrx csdr --count --exit-zero --max-line-length=127 --statistics
+
+      - name: Run unit tests
+        run: |
+          python -m unittest discover test -v
+
+  # Integration tests with full SDR stack (Docker)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests  # Only run if unit tests pass
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build test Docker image
+        run: |
+          docker build -f Dockerfile.test -t openwebrx-test .
+
+      - name: Run integration tests
+        run: |
+          docker run --rm openwebrx-test python -m unittest discover test -v
+
+  # Syntax and import checks for all source files
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black
+
+      - name: Check formatting with black
+        run: |
+          black --check --diff owrx csdr test || true  # Non-blocking for now
+
+      - name: Check for security issues
+        run: |
+          # Basic check for common issues
+          ! grep -r "eval(" owrx/ csdr/ --include="*.py" || echo "Warning: eval() usage found"
+          ! grep -r "exec(" owrx/ csdr/ --include="*.py" || echo "Warning: exec() usage found"

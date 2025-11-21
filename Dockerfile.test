@@ -1,0 +1,41 @@
+# Dockerfile for running OpenWebRX+ tests
+# This is a minimal image for CI testing, not for production use
+
+FROM python:3.11-slim-bookworm
+
+# Install system dependencies for pycsdr and related tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    libfftw3-dev \
+    libsamplerate0-dev \
+    pv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python test dependencies
+RUN pip install --no-cache-dir \
+    flake8 \
+    black
+
+# Install pycsdr from source (required for full integration tests)
+RUN git clone --depth 1 https://github.com/jketterl/csdr.git /tmp/csdr && \
+    cd /tmp/csdr && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/csdr
+
+RUN git clone --depth 1 https://github.com/jketterl/pycsdr.git /tmp/pycsdr && \
+    cd /tmp/pycsdr && \
+    pip install . && \
+    rm -rf /tmp/pycsdr
+
+# Copy application code
+WORKDIR /app
+COPY . .
+
+# Default command runs tests
+CMD ["python", "-m", "unittest", "discover", "test", "-v"]
