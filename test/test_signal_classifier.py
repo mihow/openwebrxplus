@@ -151,6 +151,7 @@ def torchsig_available():
 
 
 @unittest.skipUnless(torchsig_available(), "TorchSig not installed")
+@unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
 class TestClassificationWithSyntheticSignals(unittest.TestCase):
     """
     Test classification using TorchSig-generated synthetic signals.
