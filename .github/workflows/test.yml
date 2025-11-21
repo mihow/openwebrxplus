@@ -59,7 +59,12 @@ jobs:
 
       - name: Run integration tests
         run: |
-          docker run --rm openwebrx-test python -m unittest discover test -v
+          docker run --rm openwebrx-test sh -c "
+            echo '=== Python version ===' && python --version &&
+            echo '=== Test files ===' && ls -la test_data/iq/ &&
+            echo '=== Running tests ===' &&
+            python -m unittest discover test -v 2>&1 || exit 1
+          "
 
   # Syntax and import checks for all source files
   code-quality:
