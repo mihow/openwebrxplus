@@ -517,16 +517,37 @@ dataset = default_dataset(
 )
 
 # Dataset with impairments (realistic RF conditions)
-# impairment_level: 0=clean, 1=low, 2=medium (wireless), 3=high
+# impairment_level: 0=perfect, 1=cabled, 2=wireless
 dataset = default_dataset(
     target_labels=["class_name"],
     impairment_level=2
 )
 ```
 
+### Alternative: Using TorchSigIterableDataset Directly
+
+For more control, use TorchSig's core dataset classes:
+
+```python
+from torchsig.datasets.datasets import TorchSigIterableDataset
+from torchsig.datasets.dataset_metadata import DatasetMetadata
+
+# Configure dataset parameters
+metadata = DatasetMetadata(
+    num_iq_samples_dataset=4096,
+    num_samples=100,
+    impairment_level=1,  # 0=perfect, 1=cabled, 2=wireless
+    num_signals_max=1    # 1 for classification, >1 for detection
+)
+
+# Create iterable dataset
+dataset = TorchSigIterableDataset(metadata)
+signal = next(iter(dataset))
+```
+
 ### Sig53 Modulation Classes
 
-TorchSig's Sig53 dataset includes 53 modulation types across 6 families:
+TorchSig supports 70+ signal types. The Sig53 subset includes 53 modulation types across 6 families:
 
 | Family | Modulations |
 |--------|-------------|

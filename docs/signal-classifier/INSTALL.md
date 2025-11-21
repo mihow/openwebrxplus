@@ -12,23 +12,40 @@ TorchSig is a PyTorch-based deep learning toolkit for wireless signal processing
 
 ## Requirements
 
-- Python 3.8 or higher
-- 4GB+ RAM (8GB+ recommended for GPU)
+- Python 3.10 or higher (TorchSig v2.0 requirement)
+- Ubuntu 22.04+ (recommended)
+- 4GB+ RAM (16GB+ recommended for GPU)
 - ~2GB disk space for model weights
 
 ## Installation Methods
 
-### Method 1: pip install (Recommended)
+**Note:** TorchSig is not available on PyPI and must be installed from GitHub.
+
+### Method 1: Clone and Install (Recommended by TorchSig)
 
 ```bash
-# CPU-only installation
-pip install torch torchsig numpy
+# Clone repository and install in development mode
+git clone https://github.com/TorchDSP/torchsig.git
+cd torchsig
+pip install torch numpy
+pip install -e .
 
 # Verify installation
-python3 -c "import torch; import torchsig; print('TorchSig version:', torchsig.__version__)"
+python3 -c "import torch; import torchsig; print('TorchSig installed successfully')"
 ```
 
-### Method 2: pip install with CUDA (GPU acceleration)
+### Method 2: Direct pip install from GitHub
+
+```bash
+# CPU-only installation (simpler but no updates)
+pip install torch numpy
+pip install git+https://github.com/TorchDSP/torchsig.git
+
+# Verify installation
+python3 -c "import torch; import torchsig; print('TorchSig installed successfully')"
+```
+
+### Method 3: Install with CUDA (GPU acceleration)
 
 For NVIDIA GPU users:
 
@@ -36,14 +53,15 @@ For NVIDIA GPU users:
 # Install PyTorch with CUDA support (adjust cuda version as needed)
 pip install torch --index-url https://download.pytorch.org/whl/cu118
 
-# Install TorchSig
-pip install torchsig numpy
+# Install TorchSig from GitHub
+pip install numpy
+pip install git+https://github.com/TorchDSP/torchsig.git
 
 # Verify CUDA availability
 python3 -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 ```
 
-### Method 3: Install in Virtual Environment
+### Method 4: Install in Virtual Environment
 
 ```bash
 # Create virtual environment
@@ -51,7 +69,8 @@ python3 -m venv ~/openwebrx-venv
 source ~/openwebrx-venv/bin/activate
 
 # Install packages
-pip install torch torchsig numpy
+pip install torch numpy
+pip install git+https://github.com/TorchDSP/torchsig.git
 
 # Deactivate when done
 deactivate
@@ -59,15 +78,16 @@ deactivate
 
 Note: If using a virtual environment, ensure OpenWebRX+ runs with the same Python environment.
 
-### Method 4: System-wide Installation (Debian/Ubuntu)
+### Method 5: System-wide Installation (Debian/Ubuntu)
 
 ```bash
 # Install system dependencies
 sudo apt-get update
-sudo apt-get install -y python3-pip python3-numpy
+sudo apt-get install -y python3-pip python3-numpy git
 
 # Install PyTorch and TorchSig
-sudo pip3 install torch torchsig
+sudo pip3 install torch
+sudo pip3 install git+https://github.com/TorchDSP/torchsig.git
 ```
 
 ## Verification
@@ -135,9 +155,9 @@ print('Model downloaded successfully')
 
 ### "No module named torchsig"
 
-TorchSig is not installed or not in Python path:
+TorchSig must be installed from GitHub (not available on PyPI):
 ```bash
-pip install torchsig
+pip install git+https://github.com/TorchDSP/torchsig.git
 ```
 
 ### "No module named torch"
@@ -173,7 +193,8 @@ Ensure TorchSig is installed for the same Python version OpenWebRX+ uses:
 which python3
 
 # Install for that specific Python
-/usr/bin/python3 -m pip install torch torchsig numpy
+/usr/bin/python3 -m pip install torch numpy
+/usr/bin/python3 -m pip install git+https://github.com/TorchDSP/torchsig.git
 ```
 
 ## Uninstallation
