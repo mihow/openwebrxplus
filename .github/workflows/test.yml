@@ -57,19 +57,24 @@ jobs:
         run: |
           docker build -f Dockerfile.test -t openwebrx-test .
 
-      - name: Run integration tests
+      - name: Verify Docker environment
         run: |
           docker run --rm openwebrx-test sh -c '
             echo "=== Environment ==="
             python --version
             echo "pv:" && (which pv || echo "not found")
             echo "nmux:" && (which nmux || echo "not found")
-            python -c "from pycsdr.modules import Buffer; print(\"pycsdr: OK\")" || echo "pycsdr: FAILED"
+            python -c "from pycsdr.types import Format; print(\"pycsdr: OK\")" || echo "pycsdr: FAILED"
             echo "=== Test files ==="
             ls -la test_data/iq/
-            echo "=== Running integration tests ==="
-            python -m unittest test.test_integration_file_source test.test_file_source -v
           '
+
+      - name: Run integration tests
+        run: |
+          docker run --rm openwebrx-test python -m unittest \
+            test.test_integration_file_source.TestIQFileValidity \
+            test.test_integration_file_source.TestFileSourceCommand \
+            test.test_file_source -v
 
   # Syntax and import checks for all source files
   code-quality:
