@@ -90,6 +90,7 @@ class FeatureDetector(object):
         "drm": ["dream"],
         "adsb": ["dump1090"],
         "ism": ["rtl_433"],
+        "lora": ["lorarx"],
         "hfdl": ["dumphfdl"],
         "vdl2": ["dumpvdl2"],
         "acars": ["acarsdec"],
@@ -680,6 +681,16 @@ class FeatureDetector(object):
         distributions.
         """
         return self.command_is_runnable("rtl_433 -h")
+
+    def has_lorarx(self):
+        """
+        OpenWebRX supports decoding LoRa signals (LoRaWAN, LoRa APRS, Meshtastic, FANET)
+        by using the [lorarx](https://github.com/oe5hpm/dxlAPRS) decoder from the dxlAPRS
+        toolchain by OE5DXL. You can download pre-compiled binaries from
+        http://oe5dxl.hamspirit.at:8025/aprs/bin/ or compile from source:
+        https://github.com/oe5hpm/dxlAPRS
+        """
+        return self.command_is_runnable("lorarx -h")
 
     def has_dumphfdl(self):
         """

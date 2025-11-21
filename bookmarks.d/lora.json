@@ -1,0 +1,77 @@
+[
+    {
+        "name" : "LoRa APRS EU",
+        "frequency" : 433775000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRa APRS US",
+        "frequency" : 927900000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRa APRS Asia",
+        "frequency" : 433000000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN EU 868.1",
+        "frequency" : 868100000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN EU 868.3",
+        "frequency" : 868300000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN EU 868.5",
+        "frequency" : 868500000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN US 902.3",
+        "frequency" : 902300000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN US 903.9",
+        "frequency" : 903900000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN US 904.5",
+        "frequency" : 904500000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN US 923.3",
+        "frequency" : 923300000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN US 927.5",
+        "frequency" : 927500000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "LoRaWAN AS 923.2",
+        "frequency" : 923200000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "Meshtastic US",
+        "frequency" : 906875000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "Meshtastic EU",
+        "frequency" : 869525000,
+        "modulation" : "lora"
+    },
+    {
+        "name" : "FANET EU",
+        "frequency" : 868200000,
+        "modulation" : "lora"
+    }
+]
