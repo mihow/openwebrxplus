@@ -477,57 +477,74 @@ ws.run_forever()
 
 ## Using TorchSig for Synthetic Test Signals
 
-TorchSig can generate synthetic signals for all 53 modulation classes, providing better test coverage than simple numpy-generated signals.
+TorchSig v2.0 provides a dataset-based API for generating synthetic signals covering all 53 modulation classes from the Sig53 dataset.
 
-### Signal Generation Example
+### Signal Generation with TorchSig v2.0 API
 
 ```python
-from torchsig.signals import PSKSignal, FSKSignal, AMSignal, OFDMSignal
-from torchsig.utils.types import SignalDescription
+from torchsig.utils.defaults import default_dataset
 import numpy as np
 
-def generate_test_signal(modulation: str, num_samples: int = 4096):
-    """Generate synthetic signal for testing."""
-    signal_desc = SignalDescription(sample_rate=1.0, num_iq_samples=num_samples)
+# Create a dataset that generates random signals from Sig53 classes
+dataset = default_dataset(target_labels=["class_name"])
 
-    if modulation == "qpsk":
-        signal_gen = PSKSignal(order=4)
-    elif modulation == "4fsk":
-        signal_gen = FSKSignal(order=4)
-    elif modulation == "am":
-        signal_gen = AMSignal()
-    elif modulation == "ofdm-64":
-        signal_gen = OFDMSignal(num_subcarriers=64)
-    else:
-        raise ValueError(f"Unknown modulation: {modulation}")
+# Get a signal with its class label
+signal = next(dataset)
+iq_data = signal[0]  # IQ samples
+class_name = signal[1]  # Modulation class name
 
-    iq_data = signal_gen(signal_desc)
-    return iq_data.astype(np.complex64)
+# Classify the signal
+from owrx.signal_classifier import SignalClassifierModel
+model = SignalClassifierModel.getInstance()
+model.load("cpu")
 
-# Generate and classify
-signal = generate_test_signal("qpsk", 4096)
-predictions = model.classify(signal, top_k=3)
+predictions = model.classify(iq_data.astype(np.complex64), top_k=3)
+print(f"Ground truth: {class_name}")
+print(f"Predictions: {predictions}")
 ```
 
-### Available Signal Generators
+### Dataset Configuration Options
 
-| Generator | Modulations |
-|-----------|-------------|
-| `PSKSignal(order=N)` | BPSK (2), QPSK (4), 8PSK (8), etc. |
-| `FSKSignal(order=N)` | 2FSK, 4FSK, 8FSK, etc. |
-| `QAMSignal(order=N)` | 16QAM, 64QAM, 256QAM, etc. |
-| `OOKSignal()` | On-Off Keying (CW-like) |
-| `AMSignal()` | Amplitude Modulation |
-| `FMSignal()` | Frequency Modulation |
-| `OFDMSignal(num_subcarriers=N)` | OFDM variants |
+```python
+# Basic dataset with class labels
+dataset = default_dataset(target_labels=["class_name"])
+
+# Dataset with multiple overlapping signals
+dataset = default_dataset(
+    target_labels=["class_name"],
+    num_signals_max=5,
+    num_signals_min=2
+)
+
+# Dataset with impairments (realistic RF conditions)
+# impairment_level: 0=clean, 1=low, 2=medium (wireless), 3=high
+dataset = default_dataset(
+    target_labels=["class_name"],
+    impairment_level=2
+)
+```
+
+### Sig53 Modulation Classes
+
+TorchSig's Sig53 dataset includes 53 modulation types across 6 families:
+
+| Family | Modulations |
+|--------|-------------|
+| ASK | OOK, 4ASK, 8ASK |
+| PSK | BPSK, QPSK, 8PSK, 16PSK, 32PSK, 64PSK |
+| QAM | 16QAM, 32QAM, 64QAM, 128QAM, 256QAM, 512QAM, 1024QAM |
+| FSK | 2FSK, 4FSK, 8FSK, 16FSK, 2GFSK, 4GFSK, 8GFSK, 16GFSK |
+| MSK | 2MSK, 4MSK, 8MSK, 16MSK, GMSK |
+| OFDM | OFDM-64 through OFDM-2048 variants |
+| Analog | AM-DSB, AM-DSB-SC, AM-LSB, AM-USB, FM |
 
 ### Benefits of Synthetic Testing
 
-1. **Reproducible**: Same parameters produce identical signals
-2. **Ground Truth**: Known modulation type for accuracy testing
+1. **Reproducible**: Seed-based generation for consistent tests
+2. **Ground Truth**: Known modulation type for accuracy validation
 3. **No Hardware**: Tests run without SDR equipment
 4. **CI/CD Compatible**: Automated testing in pipelines
-5. **Edge Cases**: Generate specific SNR, bandwidth, impairments
+5. **Impairment Testing**: Add noise, fading, frequency offsets
 
 ## Known Limitations
 
