@@ -1,8 +1,11 @@
-# Ignore actual IQ files (too large for git)
+# Ignore large IQ files (recordings)
 *.cf32
 *.cu8
 *.cs8
 *.raw
+
+# But keep small test files (generated)
+!test_*.cf32
 
 # Keep JSON metadata
 !*.json
