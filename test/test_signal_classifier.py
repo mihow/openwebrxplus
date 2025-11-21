@@ -2,11 +2,23 @@
 """
 Unit tests for Signal Classifier module.
 Run with: python3 -m pytest test/test_signal_classifier.py -v
+
+Note: Some tests require pycsdr to be installed (OpenWebRX+ dependency).
+Tests will be skipped gracefully if dependencies are missing.
 """
 
 import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
+
+
+def pycsdr_available():
+    """Check if pycsdr is available."""
+    try:
+        import pycsdr
+        return True
+    except ImportError:
+        return False
 
 
 class TestFeatureDetection(unittest.TestCase):
@@ -37,6 +49,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(defaultConfig["signal_classifier_interval"], 1.0)
         self.assertEqual(defaultConfig["signal_classifier_device"], "cpu")
 
+    @unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
     def test_get_config_function(self):
         """Test get_config returns expected structure."""
         from owrx.signal_classifier import get_config
@@ -50,12 +63,14 @@ class TestConfiguration(unittest.TestCase):
 class TestModeMapping(unittest.TestCase):
     """Test TorchSig to OpenWebRX+ mode mapping."""
 
+    @unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
     def test_mapping_exists(self):
         """Verify TORCHSIG_TO_OWRX_MODE mapping exists."""
         from owrx.signal_classifier import TORCHSIG_TO_OWRX_MODE
         self.assertIsInstance(TORCHSIG_TO_OWRX_MODE, dict)
         self.assertGreater(len(TORCHSIG_TO_OWRX_MODE), 0)
 
+    @unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
     def test_common_mappings(self):
         """Test common modulation mappings."""
         from owrx.signal_classifier import TORCHSIG_TO_OWRX_MODE
@@ -65,12 +80,14 @@ class TestModeMapping(unittest.TestCase):
         self.assertEqual(TORCHSIG_TO_OWRX_MODE.get("fm"), "nfm")
         self.assertEqual(TORCHSIG_TO_OWRX_MODE.get("ook"), "cw")
 
+    @unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
     def test_sig53_classes_count(self):
         """Verify SIG53_CLASSES has expected count."""
         from owrx.signal_classifier import SIG53_CLASSES
         self.assertEqual(len(SIG53_CLASSES), 53)
 
 
+@unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
 class TestSignalClassifierModule(unittest.TestCase):
     """Test SignalClassifier module interface."""
 
@@ -103,6 +120,7 @@ class TestSignalClassifierModule(unittest.TestCase):
         self.assertEqual(classifier.frequency, 14074000)
 
 
+@unittest.skipUnless(pycsdr_available(), "pycsdr not installed")
 class TestSignalClassifierModel(unittest.TestCase):
     """Test SignalClassifierModel singleton."""
 
