@@ -41,5 +41,13 @@ RUN git clone --depth 1 https://github.com/jketterl/pycsdr.git /tmp/pycsdr && \
 WORKDIR /app
 COPY . .
 
+# Debug: verify test data was copied
+RUN echo "=== Test data contents ===" && \
+    ls -la test_data/iq/ && \
+    echo "=== Verifying pycsdr ===" && \
+    python -c "from pycsdr.modules import Buffer; print('pycsdr OK')" && \
+    echo "=== Verifying pv ===" && \
+    which pv && pv --version | head -1
+
 # Default command runs tests
 CMD ["python", "-m", "unittest", "discover", "test", "-v"]
