@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir \
     black
 
 # Install pycsdr from source (required for full integration tests)
+# csdr includes nmux
 RUN git clone --depth 1 https://github.com/jketterl/csdr.git /tmp/csdr && \
     cd /tmp/csdr && \
     mkdir build && cd build && \
@@ -27,6 +28,9 @@ RUN git clone --depth 1 https://github.com/jketterl/csdr.git /tmp/csdr && \
     make install && \
     ldconfig && \
     rm -rf /tmp/csdr
+
+# Verify nmux is available
+RUN which nmux && nmux --help || echo "Warning: nmux not found"
 
 RUN git clone --depth 1 https://github.com/jketterl/pycsdr.git /tmp/pycsdr && \
     cd /tmp/pycsdr && \

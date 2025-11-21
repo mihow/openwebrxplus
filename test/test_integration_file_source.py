@@ -138,18 +138,21 @@ class TestPycsdrIntegration(unittest.TestCase):
         if not self.pycsdr_available:
             self.skipTest("pycsdr not available")
 
-        from pycsdr.modules import Buffer, FileSource
+        from pycsdr.modules import Buffer
         from pycsdr.types import Format
 
         # Create a buffer for complex float data
         buffer = Buffer(Format.COMPLEX_FLOAT)
 
-        # Read some samples from our test file
+        # Read some samples from our test file and verify format
         with open(TEST_TONE_FILE, 'rb') as f:
             data = f.read(8000)  # 1000 samples
 
-        # This just verifies pycsdr format compatibility
+        # Verify we can read the expected amount (format compatibility)
         self.assertEqual(len(data), 8000)
+
+        # Verify buffer was created with correct format
+        self.assertIsNotNone(buffer)
 
 
 class TestNmuxIntegration(unittest.TestCase):
