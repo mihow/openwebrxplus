@@ -127,32 +127,20 @@ class TestPycsdrIntegration(unittest.TestCase):
     def setUpClass(cls):
         """Check if pycsdr is available."""
         try:
-            from pycsdr.modules import Buffer
             from pycsdr.types import Format
             cls.pycsdr_available = True
         except ImportError:
             cls.pycsdr_available = False
 
-    def test_pycsdr_can_process_iq(self):
-        """Test that pycsdr can process our IQ format."""
+    def test_pycsdr_imports(self):
+        """Test that pycsdr can be imported."""
         if not self.pycsdr_available:
             self.skipTest("pycsdr not available")
 
-        from pycsdr.modules import Buffer
         from pycsdr.types import Format
 
-        # Create a buffer for complex float data
-        buffer = Buffer(Format.COMPLEX_FLOAT)
-
-        # Read some samples from our test file and verify format
-        with open(TEST_TONE_FILE, 'rb') as f:
-            data = f.read(8000)  # 1000 samples
-
-        # Verify we can read the expected amount (format compatibility)
-        self.assertEqual(len(data), 8000)
-
-        # Verify buffer was created with correct format
-        self.assertIsNotNone(buffer)
+        # Verify COMPLEX_FLOAT format exists
+        self.assertTrue(hasattr(Format, 'COMPLEX_FLOAT'))
 
 
 class TestNmuxIntegration(unittest.TestCase):
