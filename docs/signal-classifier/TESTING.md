@@ -475,6 +475,60 @@ ws.run_forever()
 - [ ] CPU usage acceptable
 - [ ] Memory usage stable
 
+## Using TorchSig for Synthetic Test Signals
+
+TorchSig can generate synthetic signals for all 53 modulation classes, providing better test coverage than simple numpy-generated signals.
+
+### Signal Generation Example
+
+```python
+from torchsig.signals import PSKSignal, FSKSignal, AMSignal, OFDMSignal
+from torchsig.utils.types import SignalDescription
+import numpy as np
+
+def generate_test_signal(modulation: str, num_samples: int = 4096):
+    """Generate synthetic signal for testing."""
+    signal_desc = SignalDescription(sample_rate=1.0, num_iq_samples=num_samples)
+
+    if modulation == "qpsk":
+        signal_gen = PSKSignal(order=4)
+    elif modulation == "4fsk":
+        signal_gen = FSKSignal(order=4)
+    elif modulation == "am":
+        signal_gen = AMSignal()
+    elif modulation == "ofdm-64":
+        signal_gen = OFDMSignal(num_subcarriers=64)
+    else:
+        raise ValueError(f"Unknown modulation: {modulation}")
+
+    iq_data = signal_gen(signal_desc)
+    return iq_data.astype(np.complex64)
+
+# Generate and classify
+signal = generate_test_signal("qpsk", 4096)
+predictions = model.classify(signal, top_k=3)
+```
+
+### Available Signal Generators
+
+| Generator | Modulations |
+|-----------|-------------|
+| `PSKSignal(order=N)` | BPSK (2), QPSK (4), 8PSK (8), etc. |
+| `FSKSignal(order=N)` | 2FSK, 4FSK, 8FSK, etc. |
+| `QAMSignal(order=N)` | 16QAM, 64QAM, 256QAM, etc. |
+| `OOKSignal()` | On-Off Keying (CW-like) |
+| `AMSignal()` | Amplitude Modulation |
+| `FMSignal()` | Frequency Modulation |
+| `OFDMSignal(num_subcarriers=N)` | OFDM variants |
+
+### Benefits of Synthetic Testing
+
+1. **Reproducible**: Same parameters produce identical signals
+2. **Ground Truth**: Known modulation type for accuracy testing
+3. **No Hardware**: Tests run without SDR equipment
+4. **CI/CD Compatible**: Automated testing in pipelines
+5. **Edge Cases**: Generate specific SNR, bandwidth, impairments
+
 ## Known Limitations
 
 1. **Model Accuracy**: TorchSig models trained on synthetic data; real-world accuracy varies
