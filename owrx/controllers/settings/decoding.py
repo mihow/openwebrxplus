@@ -262,12 +262,18 @@ class DecodingSettingsController(SettingsFormController):
                     "signal_classifier_threshold",
                     "Confidence threshold",
                     infotext="Only show predictions with confidence above this threshold (0.0-1.0)",
+                    converter=OptionalConverter(target=float, defaultValue=0.5),
+                    validator=RangeValidator(0.0, 1.0),
+                    step=0.1,
                 ),
                 NumberInput(
                     "signal_classifier_interval",
                     "Classification interval",
                     infotext="How often to run classification on the current signal",
                     append="s",
+                    converter=OptionalConverter(target=float, defaultValue=1.0),
+                    validator=RangeValidator(0.1, 60.0),
+                    step=0.1,
                 ),
                 DropdownInput(
                     "signal_classifier_device",
