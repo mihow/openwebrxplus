@@ -105,6 +105,7 @@ class FeatureDetector(object):
         "rigcontrol": ["hamlib"],
         "cwskimmer": ["csdr_cwskimmer"],
         "mp3": ["lame"],
+        "signal_classifier": ["torchsig"],
     }
 
     def feature_availability(self):
@@ -822,3 +823,21 @@ class FeatureDetector(object):
         from the OpenWebRX repositories.
         """
         return os.path.isdir("/usr/share/aprs-symbols")
+
+    def has_torchsig(self):
+        """
+        OpenWebRX can use [TorchSig](https://github.com/TorchDSP/torchsig)
+        for automatic signal classification and modulation recognition.
+        TorchSig is a PyTorch-based deep learning toolkit for wireless
+        signal processing. Install it with:
+        ```
+        pip install torchsig torch numpy
+        ```
+        Do not forget to restart OpenWebRX after installing this package.
+        """
+        try:
+            import torch
+            import torchsig
+            return True
+        except ImportError:
+            return False

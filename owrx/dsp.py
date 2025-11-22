@@ -64,6 +64,9 @@ class ClientDemodulatorChain(Chain):
         self.metaWriter = None
         self.secondaryFftWriter = None
         self.secondaryWriter = None
+        self.classifierChain = None
+        self.classifierWriter = None
+        self.classifierEnabled = False
         self.squelchLevel = -150
         self.secondarySelector = None
         self.secondaryFrequencyOffset = None
@@ -77,6 +80,9 @@ class ClientDemodulatorChain(Chain):
         if self.secondaryDemodulator is not None:
             self.secondaryDemodulator.stop()
             self.secondaryDemodulator = None
+        if self.classifierChain is not None:
+            self.classifierChain.stop()
+            self.classifierChain = None
 
     def _connect(self, w1, w2, buffer: Optional[Buffer] = None) -> None:
         if w1 is self.selector:
@@ -260,6 +266,7 @@ class ClientDemodulatorChain(Chain):
             if self.secondarySelector and self.secondaryFrequencyOffset:
                 dialFrequency += self.secondaryFrequencyOffset
             self.secondaryDemodulator.setDialFrequency(dialFrequency)
+        self._updateClassifierDialFrequency()
 
     def setAudioCompression(self, compression: str) -> None:
         self.clientAudioChain.setAudioCompression(compression)
@@ -335,6 +342,54 @@ class ClientDemodulatorChain(Chain):
         self.secondaryWriter = writer
         if self.secondaryDemodulator is not None:
             self.secondaryDemodulator.setWriter(writer)
+
+    def setClassifierWriter(self, writer: Writer) -> None:
+        if writer is self.classifierWriter:
+            return
+        self.classifierWriter = writer
+        if self.classifierChain is not None:
+            self.classifierChain.setWriter(writer)
+
+    def setClassifierEnabled(self, enabled: bool) -> None:
+        if enabled == self.classifierEnabled:
+            return
+        self.classifierEnabled = enabled
+
+        if enabled and self.classifierChain is None:
+            self._createClassifierChain()
+        elif not enabled and self.classifierChain is not None:
+            self.classifierChain.stop()
+            self.classifierChain = None
+
+    def _createClassifierChain(self):
+        if self.classifierChain is not None:
+            self.classifierChain.stop()
+
+        try:
+            from owrx.signal_classifier import SignalClassifier, is_available, get_config
+            if not is_available():
+                logger.warning("Signal classifier requested but TorchSig is not available")
+                return
+
+            config = get_config()
+            rate = self._getSelectorOutputRate()
+            self.classifierChain = SignalClassifier(
+                sampleRate=rate,
+                interval=config["interval"],
+                threshold=config["threshold"],
+                device=config["device"]
+            )
+            self.classifierChain.setReader(self.selectorBuffer.getReader())
+            if self.classifierWriter is not None:
+                self.classifierChain.setWriter(self.classifierWriter)
+            self._updateClassifierDialFrequency()
+        except Exception as e:
+            logger.error("Failed to create classifier chain: %s", e)
+            self.classifierChain = None
+
+    def _updateClassifierDialFrequency(self):
+        if self.classifierChain is not None and self.centerFrequency is not None and self.frequencyOffset is not None:
+            self.classifierChain.setDialFrequency(self.centerFrequency + self.frequencyOffset)
 
     def setSlotFilter(self, filter: int) -> None:
         if not isinstance(self.demodulator, SlotFilterChain):
@@ -568,6 +623,17 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
         buffer = Buffer(Format.CHAR)
         self.chain.setSecondaryWriter(buffer)
         self.wireOutput("secondary_demod", buffer)
+
+        # wire signal classifier
+        buffer = Buffer(Format.CHAR)
+        self.chain.setClassifierWriter(buffer)
+        self.wireOutput("classifier", buffer)
+
+        # enable classifier if configured
+        from owrx.signal_classifier import get_config
+        classifier_config = get_config()
+        if classifier_config["enabled"]:
+            self.chain.setClassifierEnabled(True)
 
         self.startOnAvailable = False
 
@@ -831,6 +897,7 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             "secondary_fft": self.handler.write_secondary_fft,
             "secondary_demod": self._unpickle(self.handler.write_secondary_demod),
             "meta": self._unpickle(self.handler.write_metadata),
+            "classifier": self._jsonParse(self.handler.write_classification),
         }
 
         write = writers[t]
@@ -862,6 +929,24 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
                 callback(b.decode("ascii", errors="replace"))
 
         return unpickler
+
+    def _jsonParse(self, callback):
+        import json
+        buffer = b""
+
+        def parser(data):
+            nonlocal buffer
+            buffer += data.tobytes()
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                if line:
+                    try:
+                        parsed = json.loads(line.decode("utf-8"))
+                        callback(parsed)
+                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                        logger.debug("JSON parse error: %s", e)
+
+        return parser
 
     def stop(self):
         if self.chain:

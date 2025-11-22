@@ -4,7 +4,7 @@ from owrx.form.input import CheckboxInput, NumberInput, DropdownInput, Js8Profil
 from owrx.form.input.dab import DabOutputRateValues
 from owrx.form.input.wfm import WfmTauValues
 from owrx.form.input.wsjt import Q65ModeMatrix, WsjtDecodingDepthsInput
-from owrx.form.input.converter import OptionalConverter
+from owrx.form.input.converter import OptionalConverter, FloatConverter
 from owrx.form.input.validator import RangeValidator
 from owrx.wsjt import Fst4Profile, Fst4wProfile
 from owrx.breadcrumb import Breadcrumb, BreadcrumbItem
@@ -250,5 +250,39 @@ class DecodingSettingsController(SettingsFormController):
                     [Option(v, "{}s".format(v)) for v in Fst4wProfile.availableIntervals],
                 ),
                 Q65ModeMatrix("q65_enabled_combinations", "Enabled Q65 Mode combinations"),
+            ),
+            Section(
+                "Signal classifier",
+                CheckboxInput(
+                    "signal_classifier_enabled",
+                    "Enable automatic signal classification using TorchSig",
+                    infotext="Uses machine learning to predict the modulation type of the currently tuned signal",
+                ),
+                NumberInput(
+                    "signal_classifier_threshold",
+                    "Confidence threshold",
+                    infotext="Only show predictions with confidence above this threshold (0.0-1.0)",
+                    converter=FloatConverter(),
+                    validator=RangeValidator(0.0, 1.0),
+                    step=0.1,
+                ),
+                NumberInput(
+                    "signal_classifier_interval",
+                    "Classification interval",
+                    infotext="How often to run classification on the current signal",
+                    append="s",
+                    converter=FloatConverter(),
+                    validator=RangeValidator(0.1, 60.0),
+                    step=0.1,
+                ),
+                DropdownInput(
+                    "signal_classifier_device",
+                    "Inference device",
+                    options=[
+                        Option("cpu", "CPU - Compatible with all systems"),
+                        Option("cuda", "CUDA - NVIDIA GPU acceleration"),
+                    ],
+                    infotext="Use CUDA for faster inference if you have an NVIDIA GPU with CUDA support",
+                ),
             ),
         ]
