@@ -4,7 +4,7 @@ from owrx.form.input import CheckboxInput, NumberInput, DropdownInput, Js8Profil
 from owrx.form.input.dab import DabOutputRateValues
 from owrx.form.input.wfm import WfmTauValues
 from owrx.form.input.wsjt import Q65ModeMatrix, WsjtDecodingDepthsInput
-from owrx.form.input.converter import OptionalConverter
+from owrx.form.input.converter import OptionalConverter, FloatConverter
 from owrx.form.input.validator import RangeValidator
 from owrx.wsjt import Fst4Profile, Fst4wProfile
 from owrx.breadcrumb import Breadcrumb, BreadcrumbItem
@@ -262,7 +262,7 @@ class DecodingSettingsController(SettingsFormController):
                     "signal_classifier_threshold",
                     "Confidence threshold",
                     infotext="Only show predictions with confidence above this threshold (0.0-1.0)",
-                    converter=OptionalConverter(target=float, defaultValue=0.5),
+                    converter=FloatConverter(),
                     validator=RangeValidator(0.0, 1.0),
                     step=0.1,
                 ),
@@ -271,7 +271,7 @@ class DecodingSettingsController(SettingsFormController):
                     "Classification interval",
                     infotext="How often to run classification on the current signal",
                     append="s",
-                    converter=OptionalConverter(target=float, defaultValue=1.0),
+                    converter=FloatConverter(),
                     validator=RangeValidator(0.1, 60.0),
                     step=0.1,
                 ),
