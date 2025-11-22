@@ -75,7 +75,8 @@ jobs:
             test.test_integration_file_source.TestIQFileValidity \
             test.test_integration_file_source.TestFileSourceCommand \
             test.test_file_source \
-            test.test_demodulator_integration -v
+            test.test_demodulator_integration \
+            test.test_dsp_end_to_end -v
 
   # Syntax and import checks for all source files
   code-quality:
