@@ -9,6 +9,7 @@ and produce expected output. This tests the full DSP stack integration.
 import unittest
 import struct
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 
 # Path to test data
@@ -172,13 +173,17 @@ class TestFileSourceIntegration(unittest.TestCase):
         except ImportError:
             cls.file_source_available = False
 
-    def test_file_source_can_provide_iq_data(self):
+    @patch('owrx.config.Config.get')
+    def test_file_source_can_provide_iq_data(self, mock_config_get):
         """Test that FileSource can be used as input for DSP chains."""
         if not self.file_source_available:
             self.skipTest("FileSource not available (requires pycsdr)")
 
         from owrx.source.file import FileSource
         from owrx.property import PropertyLayer
+
+        # Mock Config.get() to return an empty PropertyLayer
+        mock_config_get.return_value = PropertyLayer()
 
         if not TEST_TONE_FILE.exists():
             self.skipTest("Test file not found")
@@ -206,13 +211,17 @@ class TestFileSourceIntegration(unittest.TestCase):
         # Verify byte rate calculation (48000 samples/sec * 8 bytes/sample = 384000 bytes/sec)
         self.assertIn("384000", command_str, "Command should include correct byte rate")
 
-    def test_file_source_with_fm_file(self):
+    @patch('owrx.config.Config.get')
+    def test_file_source_with_fm_file(self, mock_config_get):
         """Test FileSource with FM test file."""
         if not self.file_source_available:
             self.skipTest("FileSource not available (requires pycsdr)")
 
         from owrx.source.file import FileSource
         from owrx.property import PropertyLayer
+
+        # Mock Config.get() to return an empty PropertyLayer
+        mock_config_get.return_value = PropertyLayer()
 
         if not TEST_FM_FILE.exists():
             self.skipTest("Test FM file not found")
@@ -237,13 +246,17 @@ class TestFileSourceIntegration(unittest.TestCase):
         self.assertIn("1920000", command_str, "Should have correct byte rate for FM")
         self.assertIn("while true", command_str, "Should loop when loop=True")
 
-    def test_file_source_with_cw_file(self):
+    @patch('owrx.config.Config.get')
+    def test_file_source_with_cw_file(self, mock_config_get):
         """Test FileSource with CW test file."""
         if not self.file_source_available:
             self.skipTest("FileSource not available (requires pycsdr)")
 
         from owrx.source.file import FileSource
         from owrx.property import PropertyLayer
+
+        # Mock Config.get() to return an empty PropertyLayer
+        mock_config_get.return_value = PropertyLayer()
 
         if not TEST_CW_FILE.exists():
             self.skipTest("Test CW file not found")

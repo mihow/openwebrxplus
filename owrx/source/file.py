@@ -33,7 +33,7 @@ class FileSource(DirectSource):
     def getCommand(self):
         file_path = self.sdrProps["file_path"]
         sample_rate = self.sdrProps["samp_rate"]
-        loop = self.sdrProps.get("loop", True)
+        loop = self.sdrProps["loop"] if "loop" in self.sdrProps else True
 
         # cf32 format: 8 bytes per sample (4 bytes I + 4 bytes Q)
         byte_rate = sample_rate * 8
