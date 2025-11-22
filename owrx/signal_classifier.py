@@ -116,20 +116,25 @@ class SignalClassifierModel:
 
         try:
             import torch
-            from torchsig.models import efficientnet_b0
+            from torchsig.models import XCiT1d
 
             self.device = device
-            logger.info("Loading TorchSig model on device: %s", device)
+            logger.info("Loading TorchSig XCiT1d model on device: %s", device)
 
-            # Load pre-trained EfficientNet-B0 for Sig53 classification
-            self.model = efficientnet_b0(
-                pretrained=True,
-                num_classes=len(SIG53_CLASSES)
+            # Create XCiT1d model for Sig53 classification
+            # Note: TorchSig 2.0 does not include pretrained weights
+            # Model will use random initialization
+            self.model = XCiT1d(
+                input_channels=2,  # IQ data has 2 channels (I and Q)
+                n_features=len(SIG53_CLASSES),  # 53 signal classes
+                xcit_version="nano_12_p16_224",  # Smaller model for faster inference
+                ds_method="downsample",
+                ds_rate=16
             )
             self.model.to(self.device)
             self.model.eval()
             self.loaded = True
-            logger.info("TorchSig model loaded successfully")
+            logger.warning("TorchSig model loaded WITHOUT pretrained weights - predictions will be random until trained")
             return True
 
         except Exception as e:
@@ -162,9 +167,9 @@ class SignalClassifierModel:
             if max_val > 0:
                 samples = samples / max_val
 
-            # Convert to tensor format expected by model
-            # TorchSig models expect (batch, 2, time) for IQ
-            iq_tensor = torch.zeros(1, 2, len(samples))
+            # Convert to tensor format expected by XCiT1d
+            # XCiT1d expects (batch, channels, sequence_length) where channels=2 for IQ
+            iq_tensor = torch.zeros(1, 2, len(samples), dtype=torch.float32)
             iq_tensor[0, 0, :] = torch.from_numpy(samples.real.astype(np.float32))
             iq_tensor[0, 1, :] = torch.from_numpy(samples.imag.astype(np.float32))
             iq_tensor = iq_tensor.to(self.device)
@@ -172,7 +177,8 @@ class SignalClassifierModel:
             # Run inference
             with torch.no_grad():
                 output = self.model(iq_tensor)
-                probs = torch.softmax(output, dim=1)
+                # XCiT1d output shape should be (batch, n_features)
+                probs = torch.softmax(output, dim=-1)
 
             # Get top-k predictions
             values, indices = torch.topk(probs[0], min(top_k, len(SIG53_CLASSES)))
@@ -292,8 +298,8 @@ def get_config():
     """Get signal classifier configuration from settings."""
     pm = Config.get()
     return {
-        "enabled": pm.get("signal_classifier_enabled", False),
-        "threshold": pm.get("signal_classifier_threshold", 0.5),
-        "interval": pm.get("signal_classifier_interval", 1.0),
-        "device": pm.get("signal_classifier_device", "cpu"),
+        "enabled": pm["signal_classifier_enabled"] if "signal_classifier_enabled" in pm else False,
+        "threshold": pm["signal_classifier_threshold"] if "signal_classifier_threshold" in pm else 0.5,
+        "interval": pm["signal_classifier_interval"] if "signal_classifier_interval" in pm else 1.0,
+        "device": pm["signal_classifier_device"] if "signal_classifier_device" in pm else "cpu",
     }
