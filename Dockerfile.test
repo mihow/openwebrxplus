@@ -1,0 +1,54 @@
+# Dockerfile for running OpenWebRX+ tests
+# This is a minimal image for CI testing, not for production use
+
+FROM python:3.11-slim-bookworm
+
+# Install system dependencies for pycsdr and related tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    libfftw3-dev \
+    libsamplerate0-dev \
+    pv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python test dependencies
+RUN pip install --no-cache-dir \
+    flake8 \
+    black
+
+# Install csdr from luarvique's fork (includes CW decoder)
+# csdr includes nmux
+RUN git clone --depth 1 https://github.com/luarvique/csdr.git /tmp/csdr && \
+    cd /tmp/csdr && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/csdr
+
+# Verify nmux is available
+RUN which nmux && nmux --help || echo "Warning: nmux not found"
+
+# Install pycsdr from luarvique's fork (includes CW decoder bindings)
+RUN git clone --depth 1 https://github.com/luarvique/pycsdr.git /tmp/pycsdr && \
+    cd /tmp/pycsdr && \
+    pip install . && \
+    rm -rf /tmp/pycsdr
+
+# Copy application code
+WORKDIR /app
+COPY . .
+
+# Debug: verify test data was copied
+RUN echo "=== Test data contents ===" && \
+    ls -la test_data/iq/ && \
+    echo "=== Verifying pycsdr ===" && \
+    python -c "from pycsdr.modules import Buffer; print('pycsdr OK')" && \
+    echo "=== Verifying pv ===" && \
+    which pv && pv --version | head -1
+
+# Default command runs tests
+CMD ["python", "-m", "unittest", "discover", "test", "-v"]

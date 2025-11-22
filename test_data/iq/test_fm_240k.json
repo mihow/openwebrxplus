@@ -1,0 +1,9 @@
+{
+  "sample_rate": 240000,
+  "center_frequency": 98100000,
+  "duration_seconds": 1.0,
+  "description": "FM signal at 100000.0Hz, 75.0kHz deviation",
+  "signal_type": "fm",
+  "file_size_bytes": 1920000,
+  "num_samples": 240000
+}

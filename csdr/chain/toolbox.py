@@ -1,6 +1,6 @@
 from csdr.chain.demodulator import ServiceDemodulator, DialFrequencyReceiver
 from csdr.module.toolbox import Rtl433Module, MultimonModule, DumpHfdlModule, DumpVdl2Module, Dump1090Module, AcarsDecModule, RedseaModule, SatDumpModule, CwSkimmerModule, LameModule
-from pycsdr.modules import FmDemod, AudioResampler, Convert, Agc, Squelch, RealPart, SnrSquelch
+from pycsdr.modules import FmDemod, AudioResampler, Convert, Agc, Squelch, RealPart
 from pycsdr.types import Format
 from owrx.toolbox import TextParser, PageParser, SelCallParser, EasParser, IsmParser, RdsParser, CwSkimmerParser, Mp3Recorder
 from owrx.aircraft import HfdlParser, Vdl2Parser, AdsbParser, AcarsParser
@@ -12,6 +12,13 @@ import os
 import logging
 
 logger = logging.getLogger(__name__)
+
+# SnrSquelch is not available in all versions of pycsdr
+try:
+    from pycsdr.modules import SnrSquelch
+    HAS_SNR_SQUELCH = True
+except ImportError:
+    HAS_SNR_SQUELCH = False
 
 
 class IsmDemodulator(ServiceDemodulator, DialFrequencyReceiver):
@@ -259,6 +266,8 @@ class CwSkimmerDemodulator(ServiceDemodulator, DialFrequencyReceiver):
 
 class AudioRecorder(ServiceDemodulator, DialFrequencyReceiver):
     def __init__(self, sampleRate: int = 24000, service: bool = False):
+        if not HAS_SNR_SQUELCH:
+            raise ImportError("AudioRecorder requires SnrSquelch module which is not available in this version of pycsdr")
         # Get settings
         pm = Config.get()
         squelchLevel = pm["rec_squelch"]

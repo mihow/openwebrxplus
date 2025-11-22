@@ -1,7 +1,16 @@
 .git
-.gitignore
-.idea
-**/*.pyc
-**/*.swp
-black-env
-debian
+.github
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+dist
+build
+# Ignore large IQ files but keep test files
+*.cu8
+*.cs8
+# Allow test_*.cf32 via negation doesn't work in dockerignore
+# so we keep all cf32 files in test_data but ignore others
+!test_data/
+attic/

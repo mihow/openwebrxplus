@@ -1,11 +1,18 @@
 from csdr.chain.demodulator import BaseDemodulatorChain, FixedIfSampleRateChain, HdAudio, \
     FixedAudioRateChain, DeemphasisTauChain, MetaProvider, RdsChain
-from pycsdr.modules import AmDemod, DcBlock, FmDemod, Limit, NfmDeemphasis, Agc, Afc, \
+from pycsdr.modules import AmDemod, DcBlock, FmDemod, Limit, NfmDeemphasis, Agc, \
     WfmDeemphasis, FractionalDecimator, RealPart, Writer, Buffer
 from pycsdr.types import Format, AgcProfile
 from csdr.chain.toolbox import RdsDemodulator
 from typing import Optional
 from owrx.feature import FeatureDetector
+
+# Afc is not available in all versions of pycsdr
+try:
+    from pycsdr.modules import Afc
+    HAS_AFC = True
+except ImportError:
+    HAS_AFC = False
 
 
 class Am(BaseDemodulatorChain):
@@ -130,6 +137,8 @@ class Empty(BaseDemodulatorChain):
 
 class SAm(BaseDemodulatorChain):
     def __init__(self, agcProfile: AgcProfile = AgcProfile.SLOW):
+        if not HAS_AFC:
+            raise ImportError("SAm demodulator requires Afc module which is not available in this version of pycsdr")
         self.updatePeriod = 10
         self.samplePeriod = 4
         agc = Agc(Format.FLOAT)

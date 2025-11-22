@@ -76,6 +76,7 @@ class FeatureDetector(object):
         "sddc_soapy": ["soapy_connector", "soapy_sddc"],
         "hpsdr": ["hpsdr_connector"],
         "runds": ["runds_connector"],
+        "file": ["pv", "nmux"],
         # optional features and their requirements
         "digital_voice_digiham": ["digiham", "codecserver_ambe"],
         "digital_voice_freedv": ["freedv_rx"],
@@ -230,6 +231,13 @@ class FeatureDetector(object):
         the `nmux` package from the OpenWebRX repositories.
         """
         return self.command_is_runnable("nmux --help")
+
+    def has_pv(self):
+        """
+        Pipe Viewer (pv) is used for rate-limited IQ file playback.
+        Install with: `sudo apt install pv`
+        """
+        return self.command_is_runnable("pv --version")
 
     def has_perseustest(self):
         """
