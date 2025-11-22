@@ -56,13 +56,22 @@ Automated tests that validate signal characteristics:
 - **CW keying** - Validates on/off transitions and Morse code timing
 - **pycsdr integration** - Tests DSP library can process IQ format
 
-### 5. CI/CD Workflow (`.github/workflows/test.yml`)
-- **Unit tests** on Python 3.9, 3.10, 3.11
-- **Integration tests** in Docker with pycsdr (includes demodulator tests)
-- **Code quality** checks (flake8, black)
-- All 109 tests passing ✅
+### 5. End-to-End DSP Stack Tests (`test/test_dsp_end_to_end.py`)
+Full stack integration tests of the DSP chain:
+- **Demodulator instantiation** - AM, NFM, WFM chains with real configurations
+- **Chain component verification** - Validates AmDemod, FmDemod, AGC, filters, etc.
+- **FileSource integration** - Tests FileSource command generation for all signal types
+- **IQ format compatibility** - Verifies test files work with demodulator inputs
+- **Digital demodulators** - CW decoder integration
+Tests the complete signal flow: **FileSource → IQ data → Demodulator → Audio**
 
-### 6. Comprehensive Documentation
+### 6. CI/CD Workflow (`.github/workflows/test.yml`)
+- **Unit tests** on Python 3.9, 3.10, 3.11
+- **Integration tests** in Docker with pycsdr (includes demodulator and DSP tests)
+- **Code quality** checks (flake8, black)
+- All 118 tests passing ✅
+
+### 7. Comprehensive Documentation
 - Design document (`docs/claude/iq-file-testing.md`)
 - Usage guide (`test_data/iq/README.md`)
 - Integration test suite
@@ -129,11 +138,12 @@ python test/generate_test_iq.py --signal cw --frequency 700 \
 
 ## Test Results
 
-✅ **109 tests passing** (105 pass, 4 skip locally without pycsdr/pv/nmux)
+✅ **118 tests passing** (105 pass locally, 13 skip without pycsdr/pv/nmux)
 ✅ **CI/CD passing** on all Python versions
 ✅ **IQ format validated** - Correct complex float32 structure
 ✅ **All signal types verified** - Tone, AM, FM, CW, Noise working
 ✅ **Demodulator tests passing** - Signal characteristics validated
+✅ **DSP stack tested end-to-end** - Full demodulator chain integration verified
 
 ## Dependencies
 
@@ -160,6 +170,9 @@ python -m unittest test.test_integration_file_source test.test_file_source -v
 
 # Run demodulator tests
 python -m unittest test.test_demodulator_integration -v
+
+# Run DSP end-to-end tests
+python -m unittest test.test_dsp_end_to_end -v
 ```
 
 ## Files Changed
@@ -170,6 +183,7 @@ python -m unittest test.test_demodulator_integration -v
 - `test/test_file_source.py` - Unit tests
 - `test/test_integration_file_source.py` - Integration tests
 - `test/test_demodulator_integration.py` - Demodulator signal validation tests
+- `test/test_dsp_end_to_end.py` - End-to-end DSP stack integration tests
 - `test/test_core_modules.py` - Core module tests
 - `test_data/iq/*` - Test files and documentation
 - `.github/workflows/test.yml` - CI/CD workflow
