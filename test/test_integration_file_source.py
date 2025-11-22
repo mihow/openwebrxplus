@@ -106,18 +106,20 @@ class TestFileSourcePlayback(unittest.TestCase):
         if not self.pv_available:
             self.skipTest("pv not available")
 
-        # Read small amount of data with rate limiting
-        # At 384000 bytes/sec, reading 38400 bytes should take ~0.1s
-        cmd = f"head -c 38400 '{TEST_TONE_FILE}' | pv -q -L 384000 | wc -c"
+        # Read larger amount of data with rate limiting for more accurate timing
+        # At 100000 bytes/sec, reading 100000 bytes should take ~1s
+        # Using slower rate to ensure rate limiting is observable
+        cmd = f"head -c 100000 '{TEST_TONE_FILE}' | pv -q -L 100000 | wc -c"
 
         start = time.time()
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         elapsed = time.time() - start
 
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(int(result.stdout.strip()), 38400)
-        # Should take at least 0.05s (allowing for overhead)
-        self.assertGreater(elapsed, 0.05)
+        self.assertEqual(int(result.stdout.strip()), 100000)
+        # Should take at least 0.8s (allowing for overhead and startup time)
+        # pv has some buffering and startup overhead, so we expect 80% of theoretical time
+        self.assertGreater(elapsed, 0.8, f"Expected >0.8s for rate-limited transfer, got {elapsed:.3f}s")
 
 
 class TestPycsdrIntegration(unittest.TestCase):

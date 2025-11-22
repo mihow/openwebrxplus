@@ -190,7 +190,7 @@ class TestFileSourceIntegration(unittest.TestCase):
             center_freq=14074000,
             loop=False,
             name="Test FileSource",
-            profiles={}
+            profiles=PropertyLayer()
         )
 
         # Create FileSource
@@ -224,7 +224,7 @@ class TestFileSourceIntegration(unittest.TestCase):
             center_freq=98100000,  # Example FM frequency
             loop=True,  # Loop for demo mode
             name="FM Test Source",
-            profiles={}
+            profiles=PropertyLayer()
         )
 
         file_source = FileSource("fm_test", props)
@@ -255,7 +255,7 @@ class TestFileSourceIntegration(unittest.TestCase):
             center_freq=14070000,  # CW frequency
             loop=False,
             name="CW Test Source",
-            profiles={}
+            profiles=PropertyLayer()
         )
 
         file_source = FileSource("cw_test", props)
