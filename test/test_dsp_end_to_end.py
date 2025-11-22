@@ -178,19 +178,20 @@ class TestFileSourceIntegration(unittest.TestCase):
             self.skipTest("FileSource not available (requires pycsdr)")
 
         from owrx.source.file import FileSource
-        from owrx.property import PropertyStack
+        from owrx.property import PropertyLayer
 
         if not TEST_TONE_FILE.exists():
             self.skipTest("Test file not found")
 
         # Create FileSource configuration
-        props = PropertyStack()
-        props["file_path"] = str(TEST_TONE_FILE)
-        props["samp_rate"] = 48000
-        props["center_freq"] = 14074000
-        props["loop"] = False
-        props["name"] = "Test FileSource"
-        props["profiles"] = {}
+        props = PropertyLayer(
+            file_path=str(TEST_TONE_FILE),
+            samp_rate=48000,
+            center_freq=14074000,
+            loop=False,
+            name="Test FileSource",
+            profiles={}
+        )
 
         # Create FileSource
         file_source = FileSource("test", props)
@@ -211,19 +212,20 @@ class TestFileSourceIntegration(unittest.TestCase):
             self.skipTest("FileSource not available (requires pycsdr)")
 
         from owrx.source.file import FileSource
-        from owrx.property import PropertyStack
+        from owrx.property import PropertyLayer
 
         if not TEST_FM_FILE.exists():
             self.skipTest("Test FM file not found")
 
         # Create FileSource for FM file
-        props = PropertyStack()
-        props["file_path"] = str(TEST_FM_FILE)
-        props["samp_rate"] = 240000  # FM broadcast sample rate
-        props["center_freq"] = 98100000  # Example FM frequency
-        props["loop"] = True  # Loop for demo mode
-        props["name"] = "FM Test Source"
-        props["profiles"] = {}
+        props = PropertyLayer(
+            file_path=str(TEST_FM_FILE),
+            samp_rate=240000,  # FM broadcast sample rate
+            center_freq=98100000,  # Example FM frequency
+            loop=True,  # Loop for demo mode
+            name="FM Test Source",
+            profiles={}
+        )
 
         file_source = FileSource("fm_test", props)
         command = file_source.getCommand()
@@ -241,19 +243,20 @@ class TestFileSourceIntegration(unittest.TestCase):
             self.skipTest("FileSource not available (requires pycsdr)")
 
         from owrx.source.file import FileSource
-        from owrx.property import PropertyStack
+        from owrx.property import PropertyLayer
 
         if not TEST_CW_FILE.exists():
             self.skipTest("Test CW file not found")
 
         # Create FileSource for CW file
-        props = PropertyStack()
-        props["file_path"] = str(TEST_CW_FILE)
-        props["samp_rate"] = 48000
-        props["center_freq"] = 14070000  # CW frequency
-        props["loop"] = False
-        props["name"] = "CW Test Source"
-        props["profiles"] = {}
+        props = PropertyLayer(
+            file_path=str(TEST_CW_FILE),
+            samp_rate=48000,
+            center_freq=14070000,  # CW frequency
+            loop=False,
+            name="CW Test Source",
+            profiles={}
+        )
 
         file_source = FileSource("cw_test", props)
         command = file_source.getCommand()
