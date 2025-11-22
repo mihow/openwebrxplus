@@ -135,15 +135,15 @@ class TestDemodulatorChains(unittest.TestCase):
         am_chain.stop()
 
     def test_fm_chain_with_iq_file_format(self):
-        """Test that FM IQ file format is compatible with NFM chain."""
+        """Test that FM IQ file format is compatible with WFM chain."""
         if not self.chains_available:
             self.skipTest("csdr chains not available")
 
         if not TEST_FM_FILE.exists():
             self.skipTest("Test FM file not found")
 
-        from csdr.chain.analog import NFm
-        from pycsdr.types import Format, AgcProfile
+        from csdr.chain.analog import WFm
+        from pycsdr.types import Format
 
         # Verify FM test file format
         with open(TEST_FM_FILE, 'rb') as f:
@@ -152,13 +152,13 @@ class TestDemodulatorChains(unittest.TestCase):
             self.assertTrue(-1.0 <= i_val <= 1.0, "I value should be normalized")
             self.assertTrue(-1.0 <= q_val <= 1.0, "Q value should be normalized")
 
-        # Create NFM chain with matching sample rate
-        nfm_chain = NFm(sampleRate=240000, agcProfile=AgcProfile.SLOW)
-        expected_format = nfm_chain.getInputFormat()
+        # Create WFM chain with matching sample rate (240kHz is for wideband FM)
+        wfm_chain = WFm(sampleRate=240000, tau=50e-6, rdsRbds=False)
+        expected_format = wfm_chain.getInputFormat()
         self.assertEqual(expected_format, Format.COMPLEX_FLOAT,
-                        "NFM chain should expect COMPLEX_FLOAT input")
+                        "WFM chain should expect COMPLEX_FLOAT input")
 
-        nfm_chain.stop()
+        wfm_chain.stop()
 
 
 class TestFileSourceIntegration(unittest.TestCase):
