@@ -292,12 +292,18 @@ class TestDigitalDemodulators(unittest.TestCase):
         except ImportError:
             cls.digital_available = False
 
-    def test_cw_demodulator_instantiation(self):
+    @patch('owrx.config.Config.get')
+    def test_cw_demodulator_instantiation(self, mock_config_get):
         """Test that CW demodulator can be instantiated."""
         if not self.digital_available:
             self.skipTest("Digital demodulators not available")
 
         from csdr.chain.digimodes import CwDemodulator
+        from owrx.property import PropertyLayer
+
+        # Mock Config.get() to return a PropertyLayer with cw_showcw setting
+        mock_config = PropertyLayer(cw_showcw=False)
+        mock_config_get.return_value = mock_config
 
         # Create CW demodulator
         cw_demod = CwDemodulator(bandWidth=100)

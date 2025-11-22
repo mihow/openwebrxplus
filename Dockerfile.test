@@ -18,9 +18,9 @@ RUN pip install --no-cache-dir \
     flake8 \
     black
 
-# Install pycsdr from source (required for full integration tests)
+# Install csdr from luarvique's fork (includes CW decoder)
 # csdr includes nmux
-RUN git clone --depth 1 https://github.com/jketterl/csdr.git /tmp/csdr && \
+RUN git clone --depth 1 https://github.com/luarvique/csdr.git /tmp/csdr && \
     cd /tmp/csdr && \
     mkdir build && cd build && \
     cmake .. && \
@@ -32,7 +32,8 @@ RUN git clone --depth 1 https://github.com/jketterl/csdr.git /tmp/csdr && \
 # Verify nmux is available
 RUN which nmux && nmux --help || echo "Warning: nmux not found"
 
-RUN git clone --depth 1 https://github.com/jketterl/pycsdr.git /tmp/pycsdr && \
+# Install pycsdr from luarvique's fork (includes CW decoder bindings)
+RUN git clone --depth 1 https://github.com/luarvique/pycsdr.git /tmp/pycsdr && \
     cd /tmp/pycsdr && \
     pip install . && \
     rm -rf /tmp/pycsdr
