@@ -13,7 +13,7 @@ from unittest.mock import patch, MagicMock
 
 
 # Path to test data
-TEST_DATA_DIR = Path(__file__).parent.parent / "test_data" / "iq"
+TEST_DATA_DIR = Path(__file__).parent.parent.parent / "test_data" / "iq"
 TEST_TONE_FILE = TEST_DATA_DIR / "test_tone_1khz.cf32"
 TEST_FM_FILE = TEST_DATA_DIR / "test_fm_240k.cf32"
 TEST_CW_FILE = TEST_DATA_DIR / "test_cw.cf32"

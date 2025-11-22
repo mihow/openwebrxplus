@@ -72,11 +72,7 @@ jobs:
       - name: Run integration tests
         run: |
           docker run --rm openwebrx-test python -m unittest \
-            test.test_integration_file_source.TestIQFileValidity \
-            test.test_integration_file_source.TestFileSourceCommand \
-            test.test_file_source \
-            test.test_demodulator_integration \
-            test.test_dsp_end_to_end -v
+            test.integration.test_dsp_end_to_end -v
 
   # Syntax and import checks for all source files
   code-quality:
