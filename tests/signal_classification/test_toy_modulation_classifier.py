@@ -22,14 +22,8 @@ import torch.nn as nn
 from unittest import TestCase
 
 # Import pretrained weights from the signal_classification module
-import sys
-import os
-
-# Add parent directory to path for imports
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "..", "openwebrxplus")
-)
-from signal_classification.toy_pretrained_weights import LABELS, W, b
+# Use absolute import that works when running tests from repo root
+from openwebrxplus.signal_classification.toy_pretrained_weights import LABELS, W, b
 
 
 class SyntheticSignalGenerator:
@@ -166,6 +160,7 @@ class FeatureExtractor:
         # Use log of peak ratio and normalize
         # log(peak_ratio) typically 3.7 (SSB) to 8.5 (CW)
         # Normalize: (log_peak - 6.0) / 2.5 gives range roughly -0.9 to 1.0
+        # Add 1 to spectral_peak_ratio to avoid log(0) when signal has zero mean
         log_peak_ratio = np.log(spectral_peak_ratio + 1)
         log_peak_ratio_scaled = (log_peak_ratio - 6.0) / 2.5
 
@@ -224,7 +219,6 @@ class TestToyModulationClassifier(TestCase):
         # Fixed seed for reproducibility
         cls.seed = 42
         torch.manual_seed(cls.seed)
-        np.random.seed(cls.seed)
 
         # Initialize signal generator and feature extractor
         cls.generator = SyntheticSignalGenerator(seed=cls.seed)
