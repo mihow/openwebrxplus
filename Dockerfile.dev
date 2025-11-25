@@ -23,9 +23,25 @@ RUN python3 -m pip install --break-system-packages --no-cache-dir \
     pandas==2.3.3 \
     scikit-learn==1.7.2
 
+# Install Rust 1.86+ and build dependencies for TorchSig
+# Using rustup (not apt) because TorchSig requires Rust 1.86+, but Debian has 1.63
+# Installed AFTER PyTorch to preserve the expensive cached layer above
+RUN apt update && apt install -y --no-install-recommends \
+    curl \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
+    && . "$HOME/.cargo/env" \
+    && rustc --version
+
+# Install setuptools-rust for building Python packages with Rust extensions
+RUN python3 -m pip install --break-system-packages --no-cache-dir setuptools-rust
+
 # Install torchsig from GitHub source (not available on PyPI)
 # If this fails, we still have the cached PyTorch layer above
-RUN python3 -m pip install --break-system-packages --no-cache-dir https://github.com/TorchDSP/torchsig/archive/refs/heads/main.tar.gz
+# Source cargo env to ensure Rust is in PATH for building
+RUN . "$HOME/.cargo/env" && python3 -m pip install --break-system-packages --no-cache-dir https://github.com/TorchDSP/torchsig/archive/refs/heads/main.tar.gz
 
 # Copy your customized OpenWebRX+ code
 WORKDIR /tmp/openwebrx-custom
