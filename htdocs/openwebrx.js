@@ -1028,6 +1028,9 @@ function on_ws_recv(evt) {
                             this.update(json['value']);
                         });
                         break;
+                    case "classification":
+                        updateSignalClassification(json['value']);
+                        break;
                     case "dial_frequencies":
                         var as_bookmarks = json['value'].map(function (d) {
                             return {
@@ -1173,6 +1176,32 @@ function on_ws_opened() {
 }
 
 var was_error = 0;
+
+// Signal Classification Display
+function updateSignalClassification(data) {
+    var $panel = $('#openwebrx-panel-classification');
+    if (!$panel.length) return;
+
+    if (!data || !data.predictions || data.predictions.length === 0) {
+        $panel.find('.classification-predictions').html('<span class="no-prediction">No signal detected</span>');
+        return;
+    }
+
+    var html = data.predictions.map(function(pred) {
+        var confidence = Math.round(pred.confidence * 100);
+        var modeText = pred.mode ? pred.mode.toUpperCase() : pred.torchsig_class;
+        var barWidth = confidence + '%';
+        return '<div class="classification-item">' +
+            '<span class="classification-mode">' + modeText + '</span>' +
+            '<div class="classification-bar-container">' +
+                '<div class="classification-bar" style="width: ' + barWidth + '"></div>' +
+            '</div>' +
+            '<span class="classification-confidence">' + confidence + '%</span>' +
+        '</div>';
+    }).join('');
+
+    $panel.find('.classification-predictions').html(html);
+}
 
 function divlog(what, is_error) {
     is_error = !!is_error;

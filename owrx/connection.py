@@ -516,6 +516,9 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
     def write_metadata(self, metadata):
         self.send({"type": "metadata", "value": metadata})
 
+    def write_classification(self, classification):
+        self.send({"type": "classification", "value": classification})
+
     def write_dial_frequencies(self, frequencies):
         self.send({"type": "dial_frequencies", "value": frequencies})
 

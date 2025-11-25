@@ -1,0 +1,63 @@
+# Development Dockerfile for customized OpenWebRX+
+# Starts from the full production image and overlays your local code
+
+FROM slechev/openwebrxplus-softmbe:latest
+
+# Install Python development tools
+RUN apt update && apt install -y --no-install-recommends \
+    python3-pip \
+    python3-setuptools \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PyTorch and major dependencies first (cacheable layer)
+# This downloads ~3.7GB and takes 15-20 minutes, so we want it cached
+# Versions pinned to match TorchSig requirements (speeds up resolution)
+RUN python3 -m pip install --break-system-packages --no-cache-dir \
+    torch==2.9.1 \
+    torchvision==0.24.1 \
+    torchaudio==2.9.1 \
+    numpy==1.26.4 \
+    scipy==1.16.3 \
+    matplotlib==3.10.7 \
+    pandas==2.3.3 \
+    scikit-learn==1.7.2
+
+# Install Rust 1.86+ and build dependencies for TorchSig
+# Using rustup (not apt) because TorchSig requires Rust 1.86+, but Debian has 1.63
+# Installed AFTER PyTorch to preserve the expensive cached layer above
+RUN apt update && apt install -y --no-install-recommends \
+    curl \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
+    && . "$HOME/.cargo/env" \
+    && rustc --version
+
+# Install setuptools-rust for building Python packages with Rust extensions
+RUN python3 -m pip install --break-system-packages --no-cache-dir setuptools-rust
+
+# Install torchsig from GitHub source (not available on PyPI)
+# If this fails, we still have the cached PyTorch layer above
+# Source cargo env to ensure Rust is in PATH for building
+RUN . "$HOME/.cargo/env" && python3 -m pip install --break-system-packages --no-cache-dir https://github.com/TorchDSP/torchsig/archive/refs/heads/main.tar.gz
+
+# Copy your customized OpenWebRX+ code
+WORKDIR /tmp/openwebrx-custom
+COPY openwebrx+/ .
+
+# Install your customized version over the packaged one
+# This preserves all the SDR libraries and dependencies
+RUN python3 setup.py install --force
+
+# Clean up
+RUN rm -rf /tmp/openwebrx-custom
+
+# Use the standard entrypoint from the base image
+WORKDIR "/"
+ENTRYPOINT ["/init"]
+VOLUME /etc/openwebrx
+VOLUME /var/lib/openwebrx
+
+EXPOSE 8073
