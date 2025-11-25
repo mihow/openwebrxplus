@@ -1,7 +1,7 @@
 # Toy "pretrained" weights for the unit test.
 # This module contains:
 #  - labels: list of class names in order
-#  - W: weight matrix shape (4,3) (out_features x in_features)
+#  - W: weight matrix shape (4,3) following PyTorch nn.Linear convention (out_features x in_features)
 #  - b: bias vector shape (4,)
 #
 # The weights are handcrafted so the minimal linear model distinguishes

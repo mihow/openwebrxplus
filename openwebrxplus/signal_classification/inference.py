@@ -7,7 +7,7 @@ Functions:
  - predict_label_from_iq(iq, fs, state_dict_path=None)
 
 Notes:
- - This is a minimalifier: the real plugin will later load TorchSig models.
+ - This is a minimalist prototype: the real plugin will later load TorchSig models.
  - For now we use a single Linear layer. If a state_dict_path is provided and points to a
    compatible state_dict, it will be loaded; otherwise the toy_pretrained_weights module is used.
  - TODO: add TorchScript/ONNX export in CI and a lighter runtime path using onnxruntime.
