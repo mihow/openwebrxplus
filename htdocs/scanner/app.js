@@ -149,8 +149,9 @@ var ScannerApp = (function() {
         fetch("/api/scanner").then(function(r) { return r.json(); })
             .then(function(state) {
                 ActivityFeedView.updateState(state);
-                if (state.most_active) {
-                    ActivityFeedView.updateMostActive(state.most_active);
+                // active_signals from scanner state = current FFT window's detections
+                if (state.active_signals && state.active_signals.length > 0) {
+                    ActivityFeedView.updateActive(state.active_signals);
                 }
             }).catch(function() {});
 
@@ -161,7 +162,7 @@ var ScannerApp = (function() {
 
         fetch("/api/scanner/active").then(function(r) { return r.json(); })
             .then(function(data) {
-                ActivityFeedView.updateActive(data.signals || []);
+                ActivityFeedView.updateMostActive(data.signals || []);
             }).catch(function() {});
 
         fetch("/api/scanner/bookmarks").then(function(r) { return r.json(); })
