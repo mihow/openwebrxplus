@@ -1,0 +1,241 @@
+"""Scanner service — orchestrates sweeper, detector, classifier, and database.
+
+Runs a background thread that sweeps frequencies, detects signals,
+classifies them, and logs results. Pure Python — no OpenWebRX+ imports.
+SDR interaction is handled via callbacks (retune_callback, fft_callback).
+"""
+
+import logging
+import threading
+import time
+
+from owrx.scanner.classifier import ClassificationPipeline
+from owrx.scanner.db import ScannerDatabase
+from owrx.scanner.detector import SignalDetector
+from owrx.scanner.sweep import FrequencySweeper
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_CONFIG = {
+    "freq_start": 25_000_000,
+    "freq_stop": 960_000_000,
+    "sample_rate": 2_400_000,
+    "fft_size": 1024,
+    "snr_threshold_db": 10.0,
+    "dwell_time": 0.5,
+    "usable_bw_ratio": 0.8,
+    "skip_ranges": [],
+    "db_path": ":memory:",
+}
+
+
+class ScannerState:
+    """Observable state container for the scanner UI."""
+
+    IDLE = "idle"
+    SCANNING = "scanning"
+    LISTENING = "listening"
+    PAUSED = "paused"
+
+    def __init__(self):
+        self.status: str = self.IDLE
+        self.current_freq: int = 0
+        self.current_mode: str = ""
+        self.current_label: str = ""
+        self.signal_strength: float = 0.0
+        self.scan_progress: float = 0.0
+        self.active_signals: list[dict] = []
+        self._listeners: list = []
+
+    def add_listener(self, callback):
+        self._listeners.append(callback)
+
+    def remove_listener(self, callback):
+        self._listeners = [cb for cb in self._listeners if cb is not callback]
+
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        state_dict = self.to_dict()
+        for cb in self._listeners:
+            try:
+                cb(state_dict)
+            except Exception:
+                logger.exception("Error in state listener callback")
+
+    def to_dict(self) -> dict:
+        return {
+            "status": self.status,
+            "current_freq": self.current_freq,
+            "current_mode": self.current_mode,
+            "current_label": self.current_label,
+            "signal_strength": self.signal_strength,
+            "scan_progress": self.scan_progress,
+            "active_signals": self.active_signals,
+        }
+
+
+class ScannerService:
+    """Main scanner orchestrator. Singleton."""
+
+    _instance = None
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        self.state = ScannerState()
+        self.db: ScannerDatabase | None = None
+        self._sdr_source = None
+        self._thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
+        self._hold_freq: int | None = None
+        self._session_id: int | None = None
+        self._sweeper: FrequencySweeper | None = None
+        self._detector: SignalDetector | None = None
+        self._classifier: ClassificationPipeline | None = None
+        self._retune_callback = None
+        self._fft_callback = None
+        self._dwell_time: float = 0.5
+
+    def start(self, sdr_source=None, config: dict | None = None,
+              retune_callback=None, fft_callback=None):
+        """Initialize components and start the scan loop thread."""
+        cfg = {**DEFAULT_CONFIG, **(config or {})}
+
+        self._sdr_source = sdr_source
+        self._retune_callback = retune_callback
+        self._fft_callback = fft_callback
+        self._dwell_time = cfg["dwell_time"]
+
+        self._sweeper = FrequencySweeper(
+            freq_start=cfg["freq_start"],
+            freq_stop=cfg["freq_stop"],
+            sample_rate=cfg["sample_rate"],
+            usable_bw_ratio=cfg["usable_bw_ratio"],
+            skip_ranges=cfg["skip_ranges"],
+        )
+        self._detector = SignalDetector(
+            fft_size=cfg["fft_size"],
+            sample_rate=cfg["sample_rate"],
+            snr_threshold_db=cfg["snr_threshold_db"],
+        )
+        self._classifier = ClassificationPipeline()
+        self.db = ScannerDatabase(cfg["db_path"])
+        self._session_id = self.db.start_session(cfg)
+
+        self._stop_event.clear()
+        self._hold_freq = None
+        self.state.update(status=ScannerState.SCANNING)
+
+        self._thread = threading.Thread(target=self._scan_loop, daemon=True)
+        self._thread.start()
+        logger.info("Scanner started (session %s)", self._session_id)
+
+    def stop(self):
+        """Stop the scan loop and clean up."""
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=5.0)
+            self._thread = None
+        if self._session_id is not None and self.db is not None:
+            self.db.stop_session(self._session_id)
+            self._session_id = None
+        self.state.update(status=ScannerState.IDLE)
+        logger.info("Scanner stopped")
+
+    def pause(self):
+        self.state.update(status=ScannerState.PAUSED)
+
+    def resume(self):
+        self.state.update(status=ScannerState.SCANNING)
+
+    def skip(self):
+        """Clear hold and resume scanning."""
+        self._hold_freq = None
+        self.state.update(status=ScannerState.SCANNING)
+
+    def hold(self, freq_hz: int | None = None):
+        """Hold on a frequency (or current frequency if None)."""
+        if freq_hz is not None:
+            self._hold_freq = freq_hz
+        elif self.state.current_freq:
+            self._hold_freq = self.state.current_freq
+        self.state.update(status=ScannerState.LISTENING)
+
+    def _scan_loop(self):
+        """Background thread: sweep, detect, classify, log."""
+        while not self._stop_event.is_set():
+            # Paused — sleep and retry
+            if self.state.status == ScannerState.PAUSED:
+                time.sleep(0.1)
+                continue
+
+            # Holding on a frequency — sleep and retry
+            if self._hold_freq is not None:
+                time.sleep(0.1)
+                continue
+
+            if self._sweeper is None:
+                break
+
+            # Get current window
+            window = self._sweeper.current_window()
+            center_freq = window["center_freq"]
+
+            # Update state
+            self.state.update(
+                current_freq=center_freq,
+                current_mode=window["demod_mode"],
+                scan_progress=self._sweeper.progress,
+            )
+
+            # Retune SDR
+            if self._retune_callback is not None:
+                try:
+                    self._retune_callback(center_freq)
+                except Exception:
+                    logger.exception("Retune callback failed")
+
+            # Dwell
+            self._stop_event.wait(self._dwell_time)
+            if self._stop_event.is_set():
+                break
+
+            # Get FFT data and detect signals
+            if self._fft_callback is not None:
+                try:
+                    fft_data = self._fft_callback()
+                except Exception:
+                    logger.exception("FFT callback failed")
+                    fft_data = None
+
+                if fft_data is not None and self._detector is not None:
+                    signals = self._detector.detect(fft_data, center_freq)
+                    self.state.update(active_signals=signals)
+
+                    # Classify and log each detection
+                    for sig in signals:
+                        if self._classifier is not None:
+                            result = self._classifier.classify(
+                                frequency_hz=int(sig["frequency_hz"]),
+                                bandwidth_hz=sig["bandwidth_hz"],
+                                peak_power_db=sig["peak_power_db"],
+                                snr_db=sig["snr_db"],
+                            )
+                            if self.db is not None:
+                                self.db.log_detection(
+                                    frequency_hz=int(sig["frequency_hz"]),
+                                    bandwidth_hz=int(sig["bandwidth_hz"]),
+                                    mode=result["mode"],
+                                    peak_power_db=sig["peak_power_db"],
+                                    snr_db=sig["snr_db"],
+                                    classification=result["classification"],
+                                    filter_result=result["filter_result"],
+                                )
+
+            # Advance to next window
+            self._sweeper.advance()
