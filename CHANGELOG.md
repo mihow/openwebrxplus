@@ -1,9 +1,117 @@
+**1.2.102**
+- Added MSK144 to WSJT modes received over MQTT.
+- Added ISM signal level reporting [Ryan Jacobs].
+- Added 27700kHz SSTV frequency to all bandplans.
+- Fixed MQTT initialization order [Jan Loewe].
+- Fixed background digital mode instantiation.
+- Enabled RTTY skimmer to send to PskReporter.
+- Extended CB band to 28MHz in all bandplans.
+- Removed NOAA satellites from the bandplans.
+- Improved HAM callsigns verification.
+
+**1.2.101**
+- Fixed bandwidth allocation for services.
+- Added callsign spotter to CW/RTTY skimmers.
+- Added CW spot reporting to PskReporter.
+- Added CW skimmer to band plans.
+- Added more checks to callsign-to-country conversion.
+- Added MQTT events for downloading data from the web.
+- Added timestamps to chat messages.
+- Enabled CW/RTTY skimmers as background services.
+- Extended CW/RTTY skimmer bandwidth to 96ksps.
+- Removed NOAA-15 and NOAA-19 satellite decoders.
+
+**1.2.100**
+- Added option to chat between OWRX+ servers via MQTT.
+- Added option to relay WSJT spots between OWRX+ servers.
+- Added option to relay APRS/AIS data between OWRX+ servers.
+- Added option to relay aircraft data between OWRX+ servers.
+- Added number of connected clients to CLIENT MQTT reports.
+- Added options to disable RX and CLIENT MQTT reports.
+- Fixed MQTT code to work with Paho MQTT 2.x.
+- Fixed some maps not wrapping properly.
+
+**1.2.99**
+- Fixing RTLSDR issues caused by 'dump978-fa'.
+- Switched to 'dump978-fa-minimal' package.
+- Please, do 'sudo apt remove dump978-fa'.
+- Please, do 'sudo apt remove skyaware978'.
+
+**1.2.98**
+- Added UAT decoder using Dump978.
+- Added RTTY skimmer (please, test).
+- Added PSKReporter rig info reports.
+- Added 131.825MHz ACARS frequency.
+- Added 978MHz UAT frequency.
+- Added cosmetic fixes to DRM panel.
+- Fixed PSKReporter packets [dchristle].
+- Switched to csdr-skimmer package.
+- Removed AGC from CW skimmer.
+
+**1.2.97**
+- Added Dream 2.2 support, with AAC.
+- Added DRM metadata display.
+- Fixed saving cloned profiles.
+
+**1.2.96**
+- Added WebSDR and OpenWebRX logos to the map.
+- Added WebSDR and KiwiSDR bands to the map.
+- Added KiwiSDR connections limit to the map.
+- CW tone now changes when shifting bandpass.
+- Disabled scanning for NOAA weather bookmarks.
+- Fixed CW offset caching when bandpass changes.
+- Fixed RDS demodulator reference.
+
+**1.2.95**
+- Added per-profile noise reduction option.
+- Can now change CW tone by moving bandpass.
+- Fixed frequency display/entry in CW mode.
+- Fixed typos in several setting cues.
+- Fixed creating new CW bookmarks.
+- Fixed bookmarks editor.
+
+**1.2.94**
+- Added a button for cloning SDR profiles.
+- Added country selector, affecting bookmarks.
+- Added Finnish, Norwegian, Swedish bookmarks.
+- Added Chinese and German bookmarks.
+- Added cues to several settings.
+- Removing duplicate bookmarks, by importance.
+- Disabling scanner when profile side-stepped.
+- Updated bookmarks infrastructure.
+
+**1.2.93**
+- Added country flags to the ADSB display.
+- Fixed problem with the ADSB decoder.
+- Sorted bookmarks: blue, then yellow, then green.
+- Added ITU region-specific bookmark folders.
+- Added AAR railroad bookmarks for ITU region 2.
+- Added UCSG marine bookmarks for ITU region 2.
+- Added generic VHF marine bookmarks for regions 1/3.
+- Added Chinese PRS and SRS public radio bookmarks.
+- Added separate CB bookmarks for ITU regions 1/2.
+- Moved NOAA bookmarks to ITU region 2.
+
+**1.2.92**
+- Switched to the new AcarsDec version 4.x.
+- Extended maximum fax page length to 10000 lines.
+- Added saving user-selected bandpass settings.
+- Added [|] shortcut to clear all bandpass settings.
+- Added acarsdec and original redsea to buildall.sh.
+- Added more shortcuts to the help page.
+- Fixed JS errors when demodulator not yet set.
+- Split aircraft and satellite code from toolbox.py.
+- Removed xz requirement from packaging.
+
 **1.2.91**
 - Added option to record silence in background recording.
-- Made bot protection scheme optional.
+- Added range check to the FFT size setting.
+- Added option to disable bot protection scheme.
+- Increased recorded MP3 file size limit to 32MB.
 - Fixed bookmarks getting snapped to nearest step.
 - Fixed waterfall theme resetting on page reload.
 - Fixed zooming with the mouse wheel.
+- Fixed HydraSDR source selection.
 
 **1.2.90**
 - Added support for the HydraSDR RFOne receiver.

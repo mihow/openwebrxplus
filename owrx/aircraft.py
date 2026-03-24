@@ -66,6 +66,7 @@ MODE_CATEGORIES = {
   "ACARS": (5, 10),
   "HFDL":  (6, 10),
   "VDL2":  (7, 10),
+  "UAT":   (0, 0)
 }
 
 #
@@ -186,7 +187,7 @@ class AircraftManager(object):
         elif mode == "HFDL":
             data["ttl"] = data["timestamp"] + pm["hfdl_ttl"] * 1000
         else:
-            # Assume ADSB time-to-live
+            # Assume ADSB/UAT time-to-live
             data["ttl"] = data["timestamp"] + pm["adsb_ttl"] * 1000
 
         # Now operating on the database...
@@ -317,9 +318,9 @@ class AircraftManager(object):
 #
 class AircraftParser(TextParser):
     def __init__(self, filePrefix: str = None, service: bool = False):
-        self.reFlight = re.compile("^([0-9A-Z]{2}|[A-Z]{3})0*([0-9]+[A-Z]*)$")
-        self.reDots   = re.compile (r"^\.*([^\.].*?)\.*$")
-        self.reIATA   = re.compile("^..[0-9]+$")
+        self.reFlight = re.compile(r"^([0-9A-Z]{2}|[A-Z]{3})0*([0-9]+[A-Z]*)$")
+        self.reDots   = re.compile(r"^\.*([^\.].*?)\.*$")
+        self.reIATA   = re.compile(r"^..[0-9]+$")
         super().__init__(filePrefix=filePrefix, service=service)
 
     def parse(self, msg: bytes):
@@ -688,6 +689,67 @@ class AdsbParser(AircraftParser):
 
         # Return the number of parsed records
         return len(data["aircraft"])
+
+
+#
+# Parser for UAT messages coming from Dump978 in JSON format.
+#
+class UatParser(AircraftParser):
+    def __init__(self, service: bool = False):
+        super().__init__(filePrefix="UAT", service=service)
+
+    def parseAircraft(self, msg: bytes):
+        # Expect JSON data in text form
+        data = json.loads(msg)
+        #logger.debug("@@@ UAT: {0}".format(data))
+
+        # Collect basic data first
+        out = {
+            "mode"      : "UAT",
+            "timestamp" : round(data["metadata"]["received_at"] * 1000),
+            "rssi"      : data["metadata"]["rssi"],
+            "icao"      : data["address"].upper(),
+            "state"     : data["airground_state"],
+            "lat"       : data["position"]["lat"],
+            "lon"       : data["position"]["lon"],
+            "data"      : data
+        }
+
+        # Aircraft
+        if "callsign" in data and data["callsign"] != "UNKN":
+            out["aircraft"] = data["callsign"].upper()
+        if "emitter_category" in data:
+            out["category"] = data["emitter_category"].upper()
+
+        # Emergency status
+        if "emergency" in data and data["emergency"] != "none":
+            out["emergency"] = data["emergency"].upper()
+
+        # Altitude
+        if "geometric_altitude" in data:
+            out["altitude"] = round(data["geometric_altitude"])
+        elif "pressure_altitude" in data:
+            out["altitude"] = round(data["pressure_altitude"])
+
+        # Climb/descent rate
+        if "vertical_velocity_geometric" in data:
+            out["vspeed"] = round(data["vertical_velocity_geometric"])
+        elif "vertical_velocity_barometric" in data:
+            out["vspeed"] = round(data["vertical_velocity_barometric"])
+
+        # Speed
+        if "ground_speed" in data:
+            out["speed"] = round(data["ground_speed"])
+
+        # Heading
+        if "true_track" in data:
+            out["course"] = round(data["true_track"])
+
+        # Get country and aircraft registration from ICAO ID
+        self.parseIcaoId(data["address"], out)
+
+        # Done
+        return out
 
 
 #

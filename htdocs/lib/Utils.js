@@ -63,7 +63,7 @@ Utils.printFreq = function(freq) {
 Utils.offsetFreq = function(freq, mod) {
     switch(mod) {
         case 'cw':
-            return freq - 800;
+            return freq - UI.getCwOffset();
         case 'fax':
             return freq - 1900;
         case 'cwdecoder':
@@ -288,6 +288,11 @@ function LS() {}
 // Return true of setting exist in storage.
 LS.has = function(key) {
     return localStorage && (localStorage.getItem(key)!=null);
+};
+
+// Remove item from local storage.
+LS.delete = function(key) {
+    if (localStorage) localStorage.removeItem(key);
 };
 
 // Save named UI setting to local storage.

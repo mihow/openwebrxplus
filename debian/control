@@ -36,9 +36,10 @@ Recommends: python3-digiham (>= 0.6),
             codecserver (>= 0.1),
             msk144decoder,
             dump1090-fa-minimal,
+            dump978-fa-minimal,
             dumphfdl,
             dumpvdl2,
-            acarsdec,
+            acarsdec (>= 4.0),
             rtl-433,
             extra-sdr-drivers,
             perseus-tools,
@@ -52,7 +53,8 @@ Recommends: python3-digiham (>= 0.6),
             imagemagick,
             nrsc5,
             libhamlib-utils,
-            csdr-cwskimmer,
-            lame
+            csdr-skimmer,
+            lame,
+            dream
 Description: multi-user web sdr
  Open source, multi-user SDR receiver with a web interface

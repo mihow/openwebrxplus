@@ -63,6 +63,10 @@ class DecodingSettingsController(SettingsFormController):
                     "dsc_show_errors",
                     "Show partial messages when decoding DSC",
                 ),
+                CheckboxInput(
+                    "ism_report_levels",
+                    "Report ISM signal levels (RSSI/SNR)",
+                ),
             ),
             Section(
                 "Digital voice",
@@ -109,7 +113,7 @@ class DecodingSettingsController(SettingsFormController):
                 "Aircraft messages",
                 NumberInput(
                     "adsb_ttl",
-                    "ADSB reports expiration time",
+                    "ADSB and UAT reports expiration time",
                     validator=RangeValidator(30, 100000),
                     append="s",
                 ),
@@ -167,7 +171,7 @@ class DecodingSettingsController(SettingsFormController):
                 NumberInput(
                     "fax_max_length",
                     "Maximum page length",
-                    validator=RangeValidator(500, 3000),
+                    validator=RangeValidator(500, 10000),
                     append="lines",
                 ),
                 CheckboxInput("fax_postprocess", "Post-process received images to reduce noise"),

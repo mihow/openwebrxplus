@@ -726,6 +726,9 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
         elif mod == "cwskimmer":
             from csdr.chain.toolbox import CwSkimmerDemodulator
             return CwSkimmerDemodulator()
+        elif mod == "rttyskimmer":
+            from csdr.chain.toolbox import RttySkimmerDemodulator
+            return RttySkimmerDemodulator()
         elif mod == "mfrtty170":
             from csdr.chain.digimodes import MFRttyDemodulator
             return MFRttyDemodulator(170.0, 45.45, reverse = False)
@@ -746,36 +749,39 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             from csdr.chain.toolbox import IsmDemodulator
             return IsmDemodulator(1200000)
         elif mod == "hfdl":
-            from csdr.chain.toolbox import HfdlDemodulator
+            from csdr.chain.aircraft import HfdlDemodulator
             return HfdlDemodulator()
         elif mod == "vdl2":
-            from csdr.chain.toolbox import Vdl2Demodulator
+            from csdr.chain.aircraft import Vdl2Demodulator
             return Vdl2Demodulator()
         elif mod == "acars":
-            from csdr.chain.toolbox import AcarsDemodulator
+            from csdr.chain.aircraft import AcarsDemodulator
             return AcarsDemodulator()
         elif mod == "adsb":
-            from csdr.chain.toolbox import AdsbDemodulator
+            from csdr.chain.aircraft import AdsbDemodulator
             return AdsbDemodulator()
+        elif mod == "uat":
+            from csdr.chain.aircraft import UatDemodulator
+            return UatDemodulator()
         elif mod == "audio":
             # this should only run as a service though
             from csdr.chain.toolbox import AudioRecorder
             return AudioRecorder()
         elif mod == "noaa-apt-15":
             # this should only run as a service though
-            from csdr.chain.toolbox import NoaaAptDemodulator
+            from csdr.chain.satellite import NoaaAptDemodulator
             return NoaaAptDemodulator(satellite=15)
         elif mod == "noaa-apt-19":
             # this should only run as a service though
-            from csdr.chain.toolbox import NoaaAptDemodulator
+            from csdr.chain.satellite import NoaaAptDemodulator
             return NoaaAptDemodulator(satellite=19)
         elif mod == "meteor-lrpt":
             # this should only run as a service though
-            from csdr.chain.toolbox import MeteorLrptDemodulator
+            from csdr.chain.satellite import MeteorLrptDemodulator
             return MeteorLrptDemodulator()
         elif mod == "elektro-lrit":
             # this should only run as a service though
-            from csdr.chain.toolbox import ElektroLritDemodulator
+            from csdr.chain.satellite import ElektroLritDemodulator
             return ElektroLritDemodulator()
 
     def setSecondaryDemodulator(self, mod):

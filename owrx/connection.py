@@ -126,6 +126,7 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         "center_freq",
         "tuning_step",
         "initial_squelch_level",
+        "initial_nr_level",
         "sdr_id",
         "profile_id",
         "squelch_auto_margin",
@@ -375,7 +376,7 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
 
         # Locked source's profile can only be changed with a key
         magic = self.stack["magic_key"]
-        if self.sdr.isLocked() and magic != "" and key != magic:
+        if self.sdr.isLocked(profile) and magic != "" and key != magic:
             # Force update back to the current profile
             self.resetSdr()
 

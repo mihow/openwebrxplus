@@ -33,6 +33,14 @@ class Mode:
     def get_modulation(self):
         return self.modulation
 
+    def get_bandwidth(self):
+        bandwidth = 0
+        if self.bandpass is not None:
+            bandwidth = 2 * max(abs(self.bandpass.low_cut), abs(self.bandpass.high_cut))
+        if self.ifRate is not None:
+            bandwidth = max(bandwidth, self.ifRate)
+        return bandwidth
+
 
 EmptyMode = Mode("empty", "Empty")
 
@@ -48,7 +56,7 @@ class DigitalMode(Mode):
         name,
         underlying,
         bandpass: Bandpass = None,
-        ifRate = None,
+        ifRate=None,
         requirements=None,
         service=False,
         squelch=True,
@@ -69,6 +77,12 @@ class DigitalMode(Mode):
             return self.bandpass
         return self.get_underlying_mode().get_bandpass()
 
+    def get_bandwidth(self):
+        bandwidth = super().get_bandwidth()
+        if bandwidth > 0:
+            return bandwidth
+        return self.get_underlying_mode().get_bandwidth()
+
     def get_modulation(self):
         return self.get_underlying_mode().get_modulation()
 
@@ -76,7 +90,7 @@ class DigitalMode(Mode):
         if underlying not in self.underlying:
             raise ValueError("{} is not a valid underlying mode for {}".format(underlying, self.modulation))
         return DigitalMode(
-            self.modulation, self.name, [underlying], self.bandpass, self.requirements, self.service, self.squelch
+            self.modulation, self.name, [underlying], self.bandpass, self.ifRate, self.requirements, self.service, self.squelch
         )
 
 
@@ -205,9 +219,18 @@ class Modes(object):
             "cwskimmer",
             "CW Skimmer",
             underlying=["empty"],
-            bandpass=Bandpass(0, 24000),
-            requirements=["cwskimmer"],
-            service=False,
+            bandpass=Bandpass(0, 48000),
+            requirements=["skimmer"],
+            service=True,
+            squelch=False,
+        ),
+        DigitalMode(
+            "rttyskimmer",
+            "RTTY Skimmer",
+            underlying=["empty"],
+            bandpass=Bandpass(0, 48000),
+            requirements=["skimmer"],
+            service=True,
             squelch=False,
         ),
         DigitalMode(
@@ -287,7 +310,7 @@ class Modes(object):
             "acars",
             "ACARS",
             underlying=["am"],
-            bandpass=Bandpass(-6250, 6250),
+            bandpass=Bandpass(-6000, 6000),
             requirements=["acars"],
             service=True,
             squelch=False
@@ -299,6 +322,17 @@ class Modes(object):
             bandpass=None,
             ifRate=2400000,
             requirements=["adsb"],
+            service=True,
+            squelch=False,
+            secondaryFft=False
+        ),
+        DigitalMode(
+            "uat",
+            "UAT",
+            underlying=["empty"],
+            bandpass=None,
+            ifRate=2083334,
+            requirements=["uat"],
             service=True,
             squelch=False,
             secondaryFft=False
@@ -315,26 +349,6 @@ class Modes(object):
         ),
         # SatDump-based weather satellite reception is not real-time
         # and thus only works as background services.
-        ServiceOnlyMode(
-            "noaa-apt-15",
-            "NOAA-15 APT",
-            underlying=["empty"],
-            bandpass=Bandpass(-25000, 25000),
-            requirements=["wxsat"],
-            service=True,
-            squelch=False,
-            secondaryFft=False
-        ),
-        ServiceOnlyMode(
-            "noaa-apt-19",
-            "NOAA-19 APT",
-            underlying=["empty"],
-            bandpass=Bandpass(-25000, 25000),
-            requirements=["wxsat"],
-            service=True,
-            squelch=False,
-            secondaryFft=False
-        ),
         ServiceOnlyMode(
             "meteor-lrpt",
             "Meteor-M2 LRPT",
@@ -355,6 +369,28 @@ class Modes(object):
             squelch=False,
             secondaryFft=False
         ),
+        # NOAA-15 satellite has been retired, not operational
+        #ServiceOnlyMode(
+        #    "noaa-apt-15",
+        #    "NOAA-15 APT",
+        #    underlying=["empty"],
+        #    bandpass=Bandpass(-25000, 25000),
+        #    requirements=["wxsat"],
+        #    service=True,
+        #    squelch=False,
+        #    secondaryFft=False
+        #),
+        # NOAA-19 satellite has been retired, not operational
+        #ServiceOnlyMode(
+        #    "noaa-apt-19",
+        #    "NOAA-19 APT",
+        #    underlying=["empty"],
+        #    bandpass=Bandpass(-25000, 25000),
+        #    requirements=["wxsat"],
+        #    service=True,
+        #    squelch=False,
+        #    secondaryFft=False
+        #),
     ]
 
     @staticmethod

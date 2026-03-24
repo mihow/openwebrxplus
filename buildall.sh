@@ -17,10 +17,12 @@ GIT_PYDIGIHAM=https://github.com/jketterl/pydigiham.git
 GIT_CSDR_ETI=https://github.com/luarvique/csdr-eti.git
 GIT_PYCSDR_ETI=https://github.com/luarvique/pycsdr-eti.git
 GIT_JS8PY=https://github.com/jketterl/js8py.git
-GIT_REDSEA=https://github.com/luarvique/redsea.git
-GIT_CWSKIMMER=https://github.com/luarvique/csdr-cwskimmer.git
+GIT_SKIMMER=https://github.com/luarvique/csdr-skimmer.git
 GIT_SOAPYSDRPLAY3=https://github.com/luarvique/SoapySDRPlay3.git
 GIT_OPENWEBRX=https://github.com/luarvique/openwebrx.git
+GIT_ACARSDEC=https://github.com/luarvique/acarsdec.git
+GIT_REDSEA=https://github.com/windytan/redsea.git
+GIT_DUMP978=https://github.com/flightaware/dump978.git
 
 BUILD_DIR=./owrx-build/`uname -m`
 OUTPUT_DIR=./owrx-output/`uname -m`
@@ -46,8 +48,12 @@ if [ "${1:-}" == "--ask" ]; then
 	[[ "$ret" == [Yy]* ]] && BUILD_JS8PY=y || BUILD_JS8PY=n
 	echo;read -n1 -p "Build Redsea? [yN] " ret
 	[[ "$ret" == [Yy]* ]] && BUILD_REDSEA=y || BUILD_REDSEA=n
-	echo;read -n1 -p "Build csdr-cwskimmer? [yN] " ret
-	[[ "$ret" == [Yy]* ]] && BUILD_CWSKIMMER=y || BUILD_CWSKIMMER=n
+	echo;read -n1 -p "Build acarsdec? [yN] " ret
+	[[ "$ret" == [Yy]* ]] && BUILD_ACARSDEC=y || BUILD_ACARSDEC=n
+	echo;read -n1 -p "Build dump978? [yN] " ret
+	[[ "$ret" == [Yy]* ]] && BUILD_DUMP978=y || BUILD_DUMP978=n
+	echo;read -n1 -p "Build csdr-skimmer? [yN] " ret
+	[[ "$ret" == [Yy]* ]] && BUILD_SKIMMER=y || BUILD_SKIMMER=n
 	echo;read -n1 -p "Build SoapySDRPlay3? [yN] " ret
 	[[ "$ret" == [Yy]* ]] && BUILD_SOAPYSDRPLAY3=y || BUILD_SOAPYSDRPLAY3=n
 	echo;read -n1 -p "Build OpenWebRX+? [Yn] " ret
@@ -68,7 +74,9 @@ else
 	BUILD_PYCSDR_ETI=y
 	BUILD_JS8PY=y
 	BUILD_REDSEA=y
-	BUILD_CWSKIMMER=y
+	BUILD_ACARSDEC=y
+	BUILD_DUMP978=y
+	BUILD_SKIMMER=y
 	CLEAN_OUTPUT=y
 fi
 
@@ -88,7 +96,7 @@ fi
 if [ "${BUILD_DIGIHAM:-}" == "y" ]; then
 	BUILD_CODECSERVER=y
 fi
-if [ "${BUILD_PYCSDR:-}" == "y" ] || [ "${BUILD_OWRXCONNECTOR:-}" == "y" ] || [ "${BUILD_CSDR_ETI:-}" == "y" || [ "${BUILD_CWSKIMMER:-}" == "y" ] ]; then
+if [ "${BUILD_PYCSDR:-}" == "y" ] || [ "${BUILD_OWRXCONNECTOR:-}" == "y" ] || [ "${BUILD_CSDR_ETI:-}" == "y" || [ "${BUILD_SKIMMER:-}" == "y" ] ]; then
 	BUILD_CSDR=y
 fi
 
@@ -104,7 +112,9 @@ echo "csdr-eti: $BUILD_CSDR_ETI"
 echo "pycsdr-eti: $BUILD_PYCSDR_ETI"
 echo "js8py: $BUILD_JS8PY"
 echo "redsea: $BUILD_REDSEA"
-echo "csdr-cwskimmer: $BUILD_CWSKIMMER"
+echo "acarsdec: $BUILD_ACARSDEC"
+echo "dump978: $BUILD_DUMP978"
+echo "csdr-skimmer: $BUILD_SKIMMER"
 echo "SoapySDRPlay3: $BUILD_SOAPYSDRPLAY3"
 echo "OpenWebRx: $BUILD_OWRX"
 echo "Clean OUTPUT folder: $CLEAN_OUTPUT"
@@ -231,15 +241,37 @@ if [ "${BUILD_REDSEA:-}" == "y" ]; then
 	#sudo dpkg -i *redsea*.deb
 fi
 
-if [ "${BUILD_CWSKIMMER:-}" == "y" ]; then
-	echo "##### Building csdr-cwskimmer... #####"
-	git clone "$GIT_CWSKIMMER"
-	pushd csdr-cwskimmer
+if [ "${BUILD_ACARSDEC:-}" == "y" ]; then
+	echo "##### Building acarsdec... #####"
+	git clone -b master "$GIT_ACARSDEC"
+	pushd acarsdec
 	dpkg-buildpackage -us -uc
 	popd
-	# Not installing csdr-cwskimmer here since there are no further
+	# Not installing acarsdec here since there are no further
 	# build steps depending on it
-	#sudo dpkg -i csdr-cwskimmer*.deb
+	#sudo dpkg -i *acarsdec*.deb
+fi
+
+if [ "${BUILD_DUMP978:-}" == "y" ]; then
+	echo "##### Building dump978... #####"
+	git clone -b master "$GIT_DUMP978"
+	pushd dump978
+	dpkg-buildpackage -us -uc
+	popd
+	# Not installing dump978 here since there are no further
+	# build steps depending on it
+	#sudo dpkg -i *dump978*.deb
+fi
+
+if [ "${BUILD_SKIMMER:-}" == "y" ]; then
+	echo "##### Building csdr-skimmer... #####"
+	git clone "$GIT_SKIMMER"
+	pushd csdr-skimmer
+	dpkg-buildpackage -us -uc
+	popd
+	# Not installing csdr-skimmer here since there are no further
+	# build steps depending on it
+	#sudo dpkg -i csdr-skimmer*.deb
 fi
 
 if [ "${BUILD_SOAPYSDRPLAY3:-}" == "y" ]; then
