@@ -6,7 +6,7 @@
 
 Signal-driven radio scanner built as an OpenWebRX+ fork extension. Sweeps 25-1700 MHz, detects signals via FFT, classifies by mode, logs to SQLite, and serves a mobile-first web UI.
 
-**Branch:** `feat/scanner-v2` — 35 commits, 91 tests
+**Branch:** `feat/scanner-v2` — 39 commits, 107 tests
 **PRs:** [pi-sdr#3](https://github.com/mihow/pi-sdr/pull/3) (design) | [openwebrxplus#11](https://github.com/mihow/openwebrxplus/pull/11) (implementation)
 
 ## What works
@@ -22,15 +22,16 @@ Signal-driven radio scanner built as an OpenWebRX+ fork extension. Sweeps 25-170
 - **Test tone**: 440 Hz plays on phone (confirms Web Audio API works on mobile)
 - **Live scanning**: scanner sweeps spectrum, detects signals, populates UI in real-time
 - **WebSocket handshake**: scanner UI correctly handshakes with OpenWebRX+ and subscribes to state
+- **Offset tuning**: hold() retunes SDR ±100 kHz from signal to avoid DC spike
+- **Recorder wiring**: ScannerService creates recordings on signal detection, stores recording_path in DB
 
 ### Partially working
 - **Live audio**: DSP chain code exists (`_ensureScannerDsp`, `_tuneScannerDsp`), WebSocket routes commands, but audio binary messages (0x02) are not flowing to the client. Root cause under investigation.
-- **Recording playback in UI**: endpoint exists (`/api/scanner/recordings/{id}`), JS playback code exists, but untested end-to-end with real recordings in the DB.
-- **SDR retune on hold**: code added to retune SDR when user taps a frequency, but offset tuning (avoiding DC spike) not implemented.
+- **Recording playback in UI**: endpoint exists (`/api/scanner/recordings/{id}`), scan_iq.py populates DB with recording_path, playback untested in browser
+- **Opus recording service**: Recorder wired into scan loop (marker tones), real audio recording via DSP chain not connected yet
 
 ### Not working / not started
 - **Real-time audio on mobile**: blocked by DSP chain issue above
-- **Opus recording service**: `recorder.py` exists but not wired into live scan loop
 - **Tailscale HTTPS**: needs sudo for `tailscale serve`, HTTP works on LAN
 - **Background scanning**: scanner runs when UI is open but doesn't persist as a service
 
@@ -41,8 +42,8 @@ Signal-driven radio scanner built as an OpenWebRX+ fork extension. Sweeps 25-170
 | DSP chain doesn't produce 0x02 audio messages | **High** | Investigating — may be missing `dspcontrol {action: "start"}` message |
 | SQLite "cannot start transaction within transaction" | Medium | Fix committed (isolation_level=None), needs verification |
 | Dead WebSocket listeners cause "fd=-1" errors | Medium | Fix needed in connection cleanup |
-| offset_freq must be int, was float | Medium | Fix committed (cast to int) |
-| DC spike at center freq degrades audio | Medium | Need offset tuning (retune ±100 kHz) |
+| offset_freq must be int, was float | Medium | Fix committed + offset tuning added |
+| PropertyValidationError on offset_freq in live container | Medium | DSP tuning fails with float offset value in some code paths |
 | SDRplay hwVer=255 (API version mismatch?) | Low | Works despite warning, may affect some features |
 
 ## Architecture
@@ -106,7 +107,7 @@ Mobile UI (/scanner)          Standard UI (/)
 | `record_bands.sh` | Record IQ from SDRplay across all voice bands |
 
 ### Tests (`test/scanner/`)
-91 tests total across: test_db.py, test_detector.py, test_detector_real_iq.py, test_sweep.py, test_classifier.py, test_known_freqs.py, test_scanner_service.py, test_e2e_scanner.py
+107 tests total across: test_db.py, test_detector.py, test_detector_real_iq.py, test_sweep.py, test_classifier.py, test_known_freqs.py, test_scanner_service.py, test_e2e_scanner.py
 
 ## Priority TODO
 
@@ -116,9 +117,9 @@ Mobile UI (/scanner)          Standard UI (/)
 3. **Implement offset tuning** — retune SDR ±100 kHz from target, use offset_freq in DSP
 
 ### P1 — Offline recording + playback (doesn't need live audio)
-4. **Wire recorder into scan loop** — when scanner detects a signal, record the audio
+4. ~~**Wire recorder into scan loop**~~ **DONE** — when scanner detects a signal, record the audio
 5. **Test recording playback in UI** — verify `/api/scanner/recordings/{id}` → browser play
-6. **Populate DB from IQ file scanning** — `scan_iq.py` should save WAV recordings and set recording_path in DB
+6. ~~**Populate DB from IQ file scanning**~~ **DONE** — `scan_iq.py` should save WAV recordings and set recording_path in DB
 
 ### P2 — Dev process
 7. **Enable hot-reload** for Python changes in Docker (avoid full restart)
@@ -127,10 +128,11 @@ Mobile UI (/scanner)          Standard UI (/)
 10. **Fix sdrplay daemon management** — single source of truth, no host/container conflicts
 
 ### P3 — Features
-11. Add Portland repeater frequencies to known_freqs.py
-12. Mobile HTTPS via Tailscale serve
-13. Background scanning as persistent service
-14. VAD (voice activity detection) for content filtering
+11. ~~**Implement offset tuning**~~ **DONE** — retune SDR ±100 kHz from target, use offset_freq in DSP
+12. Add Portland repeater frequencies to known_freqs.py
+13. Mobile HTTPS via Tailscale serve
+14. Background scanning as persistent service
+15. VAD (voice activity detection) for content filtering
 
 ## Hardware notes
 - SDRplay RSP1a on Beast, serial 19030F2B96
