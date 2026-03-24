@@ -5,7 +5,8 @@ from datetime import datetime
 
 class ScannerDatabase:
     def __init__(self, db_path: str):
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False,
+                                    isolation_level=None)
         self.conn.row_factory = sqlite3.Row
         self._create_tables()
 

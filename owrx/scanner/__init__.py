@@ -194,6 +194,14 @@ class ScannerService:
         elif self.state.current_freq:
             self._hold_freq = self.state.current_freq
 
+        # Retune SDR to the held frequency
+        if self._hold_freq and self._retune_callback:
+            try:
+                self._retune_callback(self._hold_freq)
+                logger.info("Scanner: retuned SDR to %d for hold", self._hold_freq)
+            except Exception:
+                logger.exception("Scanner: retune for hold failed")
+
         # Update state with held frequency and appropriate mode
         updates = {"status": ScannerState.LISTENING}
         if self._hold_freq:

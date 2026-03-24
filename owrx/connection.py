@@ -596,23 +596,28 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
             pass
 
         status = state_dict.get("status")
-        if status == "listening":
-            # Scanner locked on a signal — tune the DSP chain
-            freq = state_dict.get("current_freq", 0)
-            mode = state_dict.get("current_mode", "nfm")
-            if freq:
-                self._tuneScannerDsp(freq, mode)
-        elif status == "scanning":
-            # Scanner resumed sweeping — set offset to 0 (no specific signal)
-            dsp = self.getDsp()
-            if dsp is not None:
-                dsp.setProperties({"offset_freq": 0, "squelch_level": -150})
+        try:
+            if status == "listening":
+                freq = state_dict.get("current_freq", 0)
+                mode = state_dict.get("current_mode", "nfm")
+                if freq:
+                    logger.info("Scanner: state->listening, tuning DSP to %d %s", freq, mode)
+                    self._tuneScannerDsp(freq, mode)
+            elif status == "scanning":
+                dsp = self.getDsp()
+                if dsp is not None:
+                    dsp.setProperties({"offset_freq": 0, "squelch_level": -150})
+        except Exception:
+            logger.exception("Scanner: error handling state change to %s", status)
 
     def _ensureScannerDsp(self):
         """Ensure the DSP chain is started for scanner audio output."""
+        logger.info("Scanner: _ensureScannerDsp called, sdr=%s", self.sdr)
         if self.sdr is None:
             self.setSdr()
+            logger.info("Scanner: setSdr done, sdr=%s", self.sdr)
         dsp = self.getDsp()
+        logger.info("Scanner: getDsp returned %s", dsp)
         if dsp is not None:
             # Set open squelch — scanner controls when to listen
             dsp.setProperties({
@@ -621,12 +626,15 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                 "squelch_level": -150,
             })
             dsp.start()
-            logger.debug("Scanner DSP chain started")
+            logger.info("Scanner: DSP chain started successfully")
 
     def _tuneScannerDsp(self, signal_freq_hz: int, mode: str):
         """Tune the DSP chain to demodulate a specific signal frequency."""
+        # Ensure DSP chain is set up first
+        self._ensureScannerDsp()
         dsp = self.getDsp()
         if dsp is None:
+            logger.warning("Scanner: getDsp() returned None, cannot tune")
             return
 
         # Calculate offset from SDR center frequency
@@ -638,15 +646,29 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
             pass
 
         if center_freq:
-            offset = signal_freq_hz - center_freq
+            offset = int(signal_freq_hz - center_freq)
         else:
             offset = 0
 
-        dsp.setProperties({
-            "offset_freq": offset,
-            "mod": mode or "nfm",
-            "squelch_level": -150,
-        })
+        logger.info("Scanner: tune signal=%d center=%d offset=%d mode=%s",
+                     signal_freq_hz, center_freq, offset, mode)
+
+        try:
+            dsp.setProperties({
+                "offset_freq": offset,
+                "mod": mode or "nfm",
+                "squelch_level": -150,
+            })
+        except Exception:
+            logger.exception("Scanner: setProperties failed, trying offset=0")
+            try:
+                dsp.setProperties({
+                    "offset_freq": 0,
+                    "mod": mode or "nfm",
+                    "squelch_level": -150,
+                })
+            except Exception:
+                logger.exception("Scanner: setProperties with offset=0 also failed")
         logger.debug(
             "Scanner DSP tuned: signal=%d center=%d offset=%d mode=%s",
             signal_freq_hz, center_freq, offset, mode,
