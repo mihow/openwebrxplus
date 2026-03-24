@@ -427,14 +427,17 @@ header h1 {
     </div>
   </div>
 
-  <!-- Recordings -->
+  <!-- Detections + Recordings -->
   <div class="panel">
     <div class="panel-header">
-      <span class="panel-title">Recordings</span>
-      <button class="btn" onclick="loadRecordings()">Refresh</button>
+      <span class="panel-title">Detections</span>
+      <div class="panel-actions">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);" id="det-count">--</span>
+        <button class="btn" onclick="loadDetections()">Refresh</button>
+      </div>
     </div>
     <div class="panel-body">
-      <div class="rec-list" id="rec-list"><div style="color:var(--text-dim); font-size:12px;">Click Refresh to load</div></div>
+      <div class="rec-list" id="det-list"><div style="color:var(--text-dim); font-size:12px;">Click Refresh to load</div></div>
     </div>
   </div>
 </div>
@@ -782,34 +785,46 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 // Recordings
 // ============================================================
-function loadRecordings() {
+function loadDetections() {
   fetch('/api/scanner/detections').then(function(r) { return r.json(); }).then(function(data) {
     var dets = data.detections || data || [];
-    var list = document.getElementById('rec-list');
+    var list = document.getElementById('det-list');
+    var countEl = document.getElementById('det-count');
     list.innerHTML = '';
-    var withRec = dets.filter(function(d) { return d.recording_path && d.id; });
-    if (withRec.length === 0) {
-      list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No recordings found</div>';
+    var withRec = dets.filter(function(d) { return d.recording_path; });
+    countEl.textContent = dets.length + ' total, ' + withRec.length + ' with audio';
+    if (dets.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No detections yet</div>';
       return;
     }
-    withRec.forEach(function(d) {
+    dets.forEach(function(d) {
       var div = document.createElement('div');
       div.className = 'rec-item';
+      var snr = d.snr_db ? d.snr_db.toFixed(0) + 'dB' : '';
+      var label = d.bookmark_label ? ' [' + d.bookmark_label + ']' : '';
+      var time = (d.timestamp || '').substring(11, 19);
       div.innerHTML =
         '<span class="rec-freq">' + (d.frequency_hz / 1e6).toFixed(3) + '</span>' +
         '<span class="rec-meta">' + (d.mode || '').toUpperCase() +
-        (d.duration_sec ? ' &middot; ' + d.duration_sec.toFixed(1) + 's' : '') +
-        ' &middot; ' + (d.timestamp || '').substring(11, 19) + '</span>' +
-        '<button class="rec-play" data-id="' + d.id + '">&#9654;</button>';
+        (snr ? ' &middot; ' + snr : '') +
+        label +
+        ' &middot; ' + time + '</span>' +
+        (d.recording_path && d.id ? '<button class="rec-play" data-id="' + d.id + '">&#9654;</button>' : '');
       var btn = div.querySelector('.rec-play');
-      btn.addEventListener('click', function() { playRecording(d.id, btn); });
+      if (btn) btn.addEventListener('click', function() { playRecording(d.id, btn); });
       list.appendChild(div);
     });
-    log('rec', 'tag-text', 'Loaded ' + withRec.length + ' recordings');
+    log('det', 'tag-text', 'Loaded ' + dets.length + ' detections (' + withRec.length + ' with audio)');
   }).catch(function(err) {
-    log('rec-err', 'tag-err', 'Failed to load recordings: ' + err.message);
+    log('det-err', 'tag-err', 'Failed to load: ' + err.message);
   });
 }
+
+// Auto-refresh detections every 5 seconds when scanning
+setInterval(function() {
+  var status = document.getElementById('scan-status');
+  if (status && status.textContent !== 'idle') loadDetections();
+}, 5000);
 
 function playRecording(id, btn) {
   if (!audioCtx) initAudio();
