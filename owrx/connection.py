@@ -489,6 +489,16 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
 
     def write_dsp_data(self, data):
         self.send(bytes([0x02]) + data)
+        # Tap audio for scanner recording
+        if self._scanner_recording_active and self._scanner_adpcm_decoder is not None:
+            try:
+                from owrx.scanner import ScannerService
+                service = ScannerService.get_instance()
+                if service._recorder is not None:
+                    samples = self._scanner_adpcm_decoder.decode(data)
+                    service._recorder.write_audio(samples)
+            except Exception:
+                pass
 
     def write_hd_audio(self, data):
         self.send(bytes([0x04]) + data)
@@ -591,6 +601,9 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         # Register for future updates
         service.state.add_listener(self._onScannerStateChange)
 
+    _scanner_adpcm_decoder = None
+    _scanner_recording_active = False
+
     def _onScannerStateChange(self, state_dict):
         """Called by ScannerState when state changes."""
         try:
@@ -606,12 +619,45 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                 if freq:
                     logger.info("Scanner: state->listening, tuning DSP to %d %s", freq, mode)
                     self._tuneScannerDsp(freq, mode)
+                    self._startScannerRecording(freq, mode)
             elif status == "scanning":
+                self._stopScannerRecording()
                 dsp = self.getDsp()
                 if dsp is not None:
                     dsp.setProperties({"offset_freq": 0, "squelch_level": -150})
         except Exception:
             logger.exception("Scanner: error handling state change to %s", status)
+
+    def _startScannerRecording(self, freq_hz, mode):
+        """Start recording DSP audio for the current signal."""
+        from owrx.scanner import ScannerService
+        service = ScannerService.get_instance()
+        if service._recorder is None:
+            return
+        try:
+            from owrx.scanner.adpcm import AdpcmDecoder
+            self._scanner_adpcm_decoder = AdpcmDecoder()
+            path = service._recorder.start_recording(freq_hz, mode)
+            self._scanner_recording_active = True
+            logger.info("Scanner: recording started: %s", path)
+        except Exception:
+            logger.exception("Scanner: failed to start recording")
+
+    def _stopScannerRecording(self):
+        """Stop the current scanner recording and update the DB."""
+        if not self._scanner_recording_active:
+            return
+        from owrx.scanner import ScannerService
+        service = ScannerService.get_instance()
+        if service._recorder is None:
+            return
+        try:
+            path = service._recorder.stop_recording()
+            self._scanner_recording_active = False
+            self._scanner_adpcm_decoder = None
+            logger.info("Scanner: recording stopped: %s", path)
+        except Exception:
+            logger.exception("Scanner: failed to stop recording")
 
     def _ensureScannerDsp(self):
         """Ensure the DSP chain is started for scanner audio output."""
