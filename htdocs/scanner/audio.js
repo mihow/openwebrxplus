@@ -19,6 +19,12 @@ var ScannerAudio = (function() {
     ImaAdpcmCodec.prototype.reset = function() {
         this.predictor = 0;
         this.stepIndex = 0;
+        this.synchronized = 0;
+        this.syncWord = "SYNC";
+        this.syncCounter = 0;
+        this.phase = 0;
+        this.syncBuffer = new Uint8Array(4);
+        this.syncBufferIndex = 0;
     };
 
     ImaAdpcmCodec.STEP_TABLE = [
@@ -42,7 +48,53 @@ var ScannerAudio = (function() {
             output[outIdx++] = this._decodeSample((byte >> 4) & 0x0f);
         }
 
-        return output;
+        return output.subarray(0, outIdx);
+    };
+
+    // SYNC-aware decode — matches OpenWebRX+ ADPCM wire format
+    // Every ~1000 samples, the stream contains "SYNC" + 4 bytes of codec state
+    ImaAdpcmCodec.prototype.decodeWithSync = function(data) {
+        var output = new Int16Array(data.length * 2);
+        var oi = 0;
+
+        for (var index = 0; index < data.length; index++) {
+            switch (this.phase) {
+                case 0:
+                    // Search for sync word "SYNC"
+                    if (data[index] === this.syncWord.charCodeAt(this.synchronized)) {
+                        this.synchronized++;
+                    } else {
+                        this.synchronized = 0;
+                    }
+                    if (this.synchronized === 4) {
+                        this.syncBufferIndex = 0;
+                        this.phase = 1;
+                    }
+                    break;
+                case 1:
+                    // Read 4 bytes of codec state (stepIndex + predictor as Int16)
+                    this.syncBuffer[this.syncBufferIndex++] = data[index];
+                    if (this.syncBufferIndex === 4) {
+                        var syncData = new Int16Array(this.syncBuffer.buffer);
+                        this.stepIndex = syncData[0];
+                        this.predictor = syncData[1];
+                        this.syncCounter = 1000;
+                        this.phase = 2;
+                    }
+                    break;
+                case 2:
+                    // Decode actual audio
+                    output[oi++] = this._decodeSample(data[index] & 0x0f);
+                    output[oi++] = this._decodeSample((data[index] >> 4) & 0x0f);
+                    if (--this.syncCounter === 0) {
+                        this.synchronized = 0;
+                        this.phase = 0;
+                    }
+                    break;
+            }
+        }
+
+        return output.subarray(0, oi);
     };
 
     ImaAdpcmCodec.prototype._decodeSample = function(nibble) {
@@ -122,12 +174,8 @@ var ScannerAudio = (function() {
         // Skip first byte (message type tag 0x02)
         var audioBytes = data.subarray(1);
 
-        // Check for SYNC word and strip it
-        var syncWord = "SYNC";
-        var decoded;
-
-        // ADPCM decode
-        decoded = codec.decode(audioBytes);
+        // ADPCM decode with SYNC word handling
+        var decoded = codec.decodeWithSync(audioBytes);
 
         // Convert Int16 to Float32 for Web Audio
         var floats = new Float32Array(decoded.length);
