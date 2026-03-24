@@ -12,6 +12,7 @@ import time
 from owrx.scanner.classifier import ClassificationPipeline
 from owrx.scanner.db import ScannerDatabase
 from owrx.scanner.detector import SignalDetector
+from owrx.scanner.known_freqs import match_known_freq
 from owrx.scanner.sweep import FrequencySweeper
 
 logger = logging.getLogger(__name__)
@@ -248,21 +249,24 @@ class ScannerService:
                     # Classify and log each detection
                     for sig in signals:
                         if self._classifier is not None:
+                            freq_hz = int(sig["frequency_hz"])
                             result = self._classifier.classify(
-                                frequency_hz=int(sig["frequency_hz"]),
+                                frequency_hz=freq_hz,
                                 bandwidth_hz=sig["bandwidth_hz"],
                                 peak_power_db=sig["peak_power_db"],
                                 snr_db=sig["snr_db"],
                             )
+                            label = match_known_freq(freq_hz)
                             if self.db is not None:
                                 self.db.log_detection(
-                                    frequency_hz=int(sig["frequency_hz"]),
+                                    frequency_hz=freq_hz,
                                     bandwidth_hz=int(sig["bandwidth_hz"]),
                                     mode=result["mode"],
                                     peak_power_db=sig["peak_power_db"],
                                     snr_db=sig["snr_db"],
                                     classification=result["classification"],
                                     filter_result=result["filter_result"],
+                                    bookmark_label=label,
                                 )
 
             # Advance to next window
