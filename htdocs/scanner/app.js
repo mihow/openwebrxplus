@@ -80,13 +80,32 @@ var ScannerApp = (function() {
 
         ws.onopen = function() {
             console.log("[Scanner] WebSocket connected");
-            // Request scanner state
-            ws.send(JSON.stringify({ type: "scanner_subscribe" }));
+            // OpenWebRX+ requires a handshake before accepting messages
+            ws.send("SERVER DE CLIENT client=openwebrx.js type=receiver");
         };
+
+        // After handshake completes, server sends config — then we subscribe
+        var handshakeComplete = false;
 
         ws.onmessage = function(evt) {
             if (typeof evt.data === "string") {
-                _handleJsonMessage(JSON.parse(evt.data));
+                // Check for server handshake response
+                if (!handshakeComplete && evt.data.indexOf("CLIENT DE SERVER") === 0) {
+                    console.log("[Scanner] Handshake complete");
+                    handshakeComplete = true;
+                    // Now subscribe to scanner state and set output rate
+                    ws.send(JSON.stringify({
+                        type: "connectionproperties",
+                        params: { output_rate: 12000, hd_output_rate: 48000 }
+                    }));
+                    ws.send(JSON.stringify({ type: "scanner_subscribe" }));
+                    return;
+                }
+                try {
+                    _handleJsonMessage(JSON.parse(evt.data));
+                } catch(e) {
+                    // Non-JSON text message (e.g. handshake) — ignore
+                }
             } else {
                 _handleBinaryMessage(new Uint8Array(evt.data));
             }
@@ -185,20 +204,23 @@ var ScannerApp = (function() {
     }
 
     function sendCommand(cmd, params) {
-        var body = { command: cmd };
-        if (params) body.params = params;
+        var msg = { type: "scanner_command", command: cmd };
+        if (params) msg.params = params;
 
-        fetch("/api/scanner/command", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        })
-        .then(function() {
-            _pollState();
-        })
-        .catch(function(err) {
-            console.error("[Scanner] Command failed:", err);
-        });
+        // Send via WebSocket so the DSP chain is managed by the same connection
+        if (ws && ws.readyState === 1) {
+            ws.send(JSON.stringify(msg));
+            setTimeout(_pollState, 300);
+        } else {
+            // Fallback to REST if WS not connected
+            fetch("/api/scanner/command", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ command: cmd, params: params }),
+            })
+            .then(function() { _pollState(); })
+            .catch(function(err) { console.error("[Scanner] Command failed:", err); });
+        }
     }
 
     function tuneTo(freqHz, mode) {
