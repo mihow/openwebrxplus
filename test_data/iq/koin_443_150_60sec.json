@@ -1,0 +1,11 @@
+{
+  "name": "koin_443_150_60sec",
+  "center_freq_hz": 443150000,
+  "sample_rate": 2400000,
+  "duration_sec": 60,
+  "format": "cf32",
+  "device": "SDRplay RSP1a",
+  "gain": 35,
+  "recorded_at": "2026-03-23T23:28:00",
+  "notes": "70cm repeater with active voice conversation, likely Mount Scott repeater"
+}
