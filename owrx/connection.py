@@ -364,6 +364,11 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                             message["name"] if "name" in message else None
                         )
 
+                elif message["type"] == "scanner_subscribe":
+                    self._subscribeScannerState()
+                elif message["type"] == "scanner_command":
+                    self._handleScannerCommand(message)
+
             else:
                 logger.warning("received message without type: {0}".format(message))
 
@@ -454,6 +459,12 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         if self.bookmarkSub is not None:
             self.bookmarkSub.cancel()
             self.bookmarkSub = None
+        # Unsubscribe from scanner state updates
+        try:
+            from owrx.scanner import ScannerService
+            ScannerService.get_instance().state.remove_listener(self._onScannerStateChange)
+        except Exception:
+            pass
         super().close(error)
 
     def stopDsp(self):
@@ -565,6 +576,54 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
             return res
 
         self.send({"type": "modes", "value": [to_json(m) for m in modes]})
+
+    # --- Scanner integration ---
+
+    def _subscribeScannerState(self):
+        """Subscribe this client to scanner state updates."""
+        from owrx.scanner import ScannerService
+        service = ScannerService.get_instance()
+        # Send current state immediately
+        self.write_scanner_state(service.state.to_dict())
+        # Register for future updates
+        service.state.add_listener(self._onScannerStateChange)
+
+    def _onScannerStateChange(self, state_dict):
+        """Called by ScannerState when state changes."""
+        try:
+            self.mp_send({"type": "scanner_state", **state_dict})
+        except Exception:
+            pass
+
+    def _handleScannerCommand(self, message):
+        """Handle scanner commands from WebSocket."""
+        from owrx.scanner import ScannerService
+        service = ScannerService.get_instance()
+        cmd = message.get("command", "")
+        params = message.get("params", {})
+
+        if cmd == "start":
+            sdr_source = SdrService.getFirstSource()
+            if sdr_source:
+                service.start_with_sdr(sdr_source)
+        elif cmd == "stop":
+            service.stop()
+        elif cmd == "pause":
+            service.pause()
+        elif cmd == "resume":
+            service.resume()
+        elif cmd == "skip":
+            service.skip()
+        elif cmd == "hold":
+            service.hold(params.get("frequency"))
+        elif cmd == "tune":
+            service.hold(params.get("frequency"))
+
+        # Send updated state back
+        self.write_scanner_state(service.state.to_dict())
+
+    def write_scanner_state(self, state):
+        self.send({"type": "scanner_state", **state})
 
 
 class MapConnection(OpenWebRxClient):
