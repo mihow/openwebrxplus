@@ -116,6 +116,21 @@ class ScannerService:
         from owrx.scanner.sdr_bridge import SdrBridge
 
         cfg = {**DEFAULT_CONFIG, **(config or {})}
+
+        # Pull scanner config from OpenWebRX+ config system if not overridden
+        try:
+            from owrx.config import Config
+            pm = Config.get()
+            for key in ("scanner_storage_path", "scanner_max_storage_mb",
+                        "scanner_retention_days", "scanner_max_clip_sec"):
+                if key not in cfg and key in pm:
+                    cfg[key] = pm[key]
+        except Exception:
+            pass
+
+        # Use persistent DB in the data directory when running with SDR
+        if cfg.get("db_path") == ":memory:":
+            cfg["db_path"] = "/var/lib/openwebrx/scanner.db"
         fft_size = cfg.get("fft_size", 1024)
 
         self._bridge = SdrBridge(sdr_source, fft_size=fft_size)
