@@ -8,13 +8,15 @@ class SignalDetector:
         sample_rate: float,
         snr_threshold_db: float = 10.0,
         noise_alpha: float = 0.1,
-        min_signal_bins: int = 2,
+        min_signal_bins: int = 3,
+        merge_gap_bins: int = 10,
     ):
         self.fft_size = fft_size
         self.sample_rate = sample_rate
         self.snr_threshold_db = snr_threshold_db
         self.noise_alpha = noise_alpha
         self.min_signal_bins = min_signal_bins
+        self.merge_gap_bins = merge_gap_bins
         self.noise_floor_db: float | None = None
         self._bin_width = sample_rate / fft_size
 
@@ -52,22 +54,32 @@ class SignalDetector:
 
         # 4. Find contiguous runs of bins above threshold
         above = fft_power_db > threshold
-        signals = []
+        raw_runs = []
         run_start = None
 
         for i in range(len(above)):
             if above[i] and run_start is None:
                 run_start = i
             elif not above[i] and run_start is not None:
-                if i - run_start >= self.min_signal_bins:
-                    signals.append((run_start, i))
+                raw_runs.append((run_start, i))
                 run_start = None
 
         # Handle run that extends to end
-        if run_start is not None and len(above) - run_start >= self.min_signal_bins:
-            signals.append((run_start, len(above)))
+        if run_start is not None:
+            raw_runs.append((run_start, len(above)))
 
-        # 5. Extract signal parameters
+        # 5. Merge runs that are separated by fewer than merge_gap_bins
+        merged = []
+        for start, end in raw_runs:
+            if merged and start - merged[-1][1] < self.merge_gap_bins:
+                merged[-1] = (merged[-1][0], end)
+            else:
+                merged.append((start, end))
+
+        # 6. Filter by minimum width
+        signals = [(s, e) for s, e in merged if e - s >= self.min_signal_bins]
+
+        # 7. Extract signal parameters
         results = []
         for start, end in signals:
             segment = fft_power_db[start:end]
@@ -90,6 +102,43 @@ class SignalDetector:
                 "snr_db": snr,
             })
 
-        # 6. Sort by peak power descending
+        # 8. Sort by peak power descending
         results.sort(key=lambda s: s["peak_power_db"], reverse=True)
         return results
+
+    def detect_from_iq(
+        self,
+        iq_samples: np.ndarray,
+        center_freq: float,
+        num_averages: int = 8,
+    ) -> list[dict]:
+        """Compute averaged FFT power from raw IQ samples and detect signals.
+
+        Args:
+            iq_samples: Complex64 (cf32) IQ samples.
+            center_freq: Center frequency in Hz.
+            num_averages: Number of FFT frames to average for smoothing.
+
+        Returns:
+            List of detected signal dicts (same format as detect()).
+        """
+        n = self.fft_size
+        num_frames = min(num_averages, len(iq_samples) // n)
+        if num_frames < 1:
+            return []
+
+        # Accumulate power across frames
+        power_accum = np.zeros(n, dtype=np.float64)
+        window = np.hanning(n)
+
+        for i in range(num_frames):
+            frame = iq_samples[i * n : (i + 1) * n]
+            spectrum = np.fft.fftshift(np.fft.fft(frame * window))
+            power_accum += np.abs(spectrum) ** 2
+
+        power_accum /= num_frames
+
+        # Convert to dB
+        fft_power_db = 10.0 * np.log10(power_accum + 1e-20)
+
+        return self.detect(fft_power_db, center_freq)
