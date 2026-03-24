@@ -1,4 +1,5 @@
 import json
+import os
 from owrx.controllers import Controller
 from owrx.controllers.template import TemplateController
 
@@ -131,3 +132,43 @@ class ScannerCommandController(Controller):
             json.dumps(service.state.to_dict()),
             content_type="application/json",
         )
+
+
+class ScannerRecordingController(Controller):
+    """GET /api/scanner/recordings/<id> — stream a recorded audio file."""
+
+    def indexAction(self):
+        from owrx.scanner import ScannerService
+
+        service = ScannerService.get_instance()
+        if service.db is None:
+            self.send_response("", code=404)
+            return
+
+        det_id = self.request.matches.group(1)
+        try:
+            det = service.db.get_detection(int(det_id))
+        except (ValueError, TypeError):
+            self.send_response("", code=404)
+            return
+
+        if not det or not det.get("recording_path"):
+            self.send_response("", code=404)
+            return
+
+        path = det["recording_path"]
+        if not os.path.exists(path):
+            self.send_response("", code=404)
+            return
+
+        with open(path, "rb") as f:
+            data = f.read()
+
+        if path.endswith(".ogg"):
+            content_type = "audio/ogg"
+        elif path.endswith(".wav"):
+            content_type = "audio/wav"
+        else:
+            content_type = "application/octet-stream"
+
+        self.send_response(data, content_type=content_type)

@@ -269,7 +269,24 @@ var LogView = {
                 '<span class="log-freq">' + formatFreq(det.frequency_hz) + "</span>" +
                 '<span class="log-mode">' + (det.mode || "").toUpperCase() + "</span>" +
                 (det.duration_sec ? '<span class="log-duration">' + det.duration_sec.toFixed(1) + "s</span>" : "") +
-                (det.recording_path ? '<button class="log-play" data-path="' + det.recording_path + '">&#9654;</button>' : "");
+                (det.recording_path && det.id ? '<button class="log-play" data-id="' + det.id + '">&#9654;</button>' : "");
+            // Attach play handler for recordings
+            var playBtn = entry.querySelector(".log-play");
+            if (playBtn) {
+                playBtn.addEventListener("click", function(e) {
+                    e.stopPropagation();
+                    var id = this.dataset.id;
+                    this.textContent = "...";
+                    ScannerAudio.playRecording(id)
+                        .then(function() {
+                            playBtn.innerHTML = "&#9654;";
+                        })
+                        .catch(function(err) {
+                            console.error("Playback failed:", err);
+                            playBtn.innerHTML = "&#9654;";
+                        });
+                });
+            }
             this.list.appendChild(entry);
         }.bind(this));
     },
@@ -280,6 +297,22 @@ var LogView = {
 var SettingsView = {
     init: function() {
         // Load current settings from API
+        var testBtn = document.getElementById("btn-test-audio");
+        if (testBtn) {
+            testBtn.addEventListener("click", function() {
+                testBtn.disabled = true;
+                testBtn.textContent = "Playing...";
+                ScannerAudio.playTestTone(2, 440)
+                    .then(function() {
+                        testBtn.disabled = false;
+                        testBtn.textContent = "Test Audio";
+                    })
+                    .catch(function() {
+                        testBtn.disabled = false;
+                        testBtn.textContent = "Test Audio";
+                    });
+            });
+        }
     },
 
     loadSettings: function() {

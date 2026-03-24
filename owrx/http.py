@@ -32,6 +32,7 @@ from owrx.controllers.scanner import (
     ScannerActiveController,
     ScannerBookmarksController,
     ScannerCommandController,
+    ScannerRecordingController,
 )
 from owrx.storage import Storage
 from http.server import BaseHTTPRequestHandler
@@ -199,6 +200,7 @@ class Router(object):
             StaticRoute("/api/scanner/active", ScannerActiveController),
             StaticRoute("/api/scanner/bookmarks", ScannerBookmarksController),
             StaticRoute("/api/scanner/command", ScannerCommandController, method="POST"),
+            RegexRoute(r"^/api/scanner/recordings/(\d+)$", ScannerRecordingController),
         ]
 
     def find_route(self, request):

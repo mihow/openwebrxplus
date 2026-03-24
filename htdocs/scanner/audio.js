@@ -185,6 +185,60 @@ var ScannerAudio = (function() {
         return started;
     }
 
+    function playTestTone(durationSec, frequency) {
+        durationSec = durationSec || 2;
+        frequency = frequency || 440;
+
+        // Ensure audio context is initialized
+        if (!audioContext) {
+            var ctxClass = window.AudioContext || window.webkitAudioContext;
+            audioContext = new ctxClass({ latencyHint: "playback" });
+        }
+        if (audioContext.state !== "running") {
+            audioContext.resume();
+        }
+
+        var osc = audioContext.createOscillator();
+        var gain = audioContext.createGain();
+        osc.type = "sine";
+        osc.frequency.value = frequency;
+        gain.gain.value = 0.3;
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.start();
+        osc.stop(audioContext.currentTime + durationSec);
+
+        return new Promise(function(resolve) {
+            setTimeout(resolve, durationSec * 1000);
+        });
+    }
+
+    function playRecording(detectionId) {
+        // Ensure audio context is initialized
+        if (!audioContext) {
+            var ctxClass = window.AudioContext || window.webkitAudioContext;
+            audioContext = new ctxClass({ latencyHint: "playback" });
+        }
+        if (audioContext.state !== "running") {
+            audioContext.resume();
+        }
+
+        return fetch("/api/scanner/recordings/" + detectionId)
+            .then(function(r) {
+                if (!r.ok) throw new Error("Recording not found");
+                return r.arrayBuffer();
+            })
+            .then(function(buf) {
+                return audioContext.decodeAudioData(buf);
+            })
+            .then(function(audioBuffer) {
+                var source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start();
+            });
+    }
+
     return {
         init: init,
         processAudioData: processAudioData,
@@ -192,5 +246,7 @@ var ScannerAudio = (function() {
         resume: resume,
         setVolume: setVolume,
         isStarted: isStarted,
+        playTestTone: playTestTone,
+        playRecording: playRecording,
     };
 })();
