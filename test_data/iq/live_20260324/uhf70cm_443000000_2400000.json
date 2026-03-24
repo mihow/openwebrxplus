@@ -1,0 +1,9 @@
+{
+  "name": "uhf70cm_443000000_2400000",
+  "center_freq_hz": 443000000,
+  "sample_rate": 2400000,
+  "duration_sec": 10,
+  "format": "cf32",
+  "device": "RTL-SDR Blog V4",
+  "recorded_at": "2026-03-24T07:38:00+00:00"
+}
