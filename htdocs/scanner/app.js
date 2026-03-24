@@ -19,11 +19,13 @@ var ScannerApp = (function() {
         // Tap overlay — init audio on first tap
         var overlay = document.getElementById("tap-overlay");
         overlay.addEventListener("click", function() {
+            overlay.classList.add("hidden");
+            _startPolling();
+            _connectWs();
             ScannerAudio.init().then(function() {
                 ScannerAudio.resume();
-                overlay.classList.add("hidden");
-                _connectWs();
-                _startPolling();
+            }).catch(function(e) {
+                console.log("[Scanner] Audio init failed (ok, will retry):", e);
             });
         });
 
@@ -139,35 +141,33 @@ var ScannerApp = (function() {
 
     function _startPolling() {
         _pollState();
-        pollTimer = setInterval(_pollState, 5000);
+        pollTimer = setInterval(_pollState, 2000);
     }
 
     function _pollState() {
-        // Fetch scanner state + recent data via REST API
-        Promise.all([
-            fetch("/api/scanner").then(function(r) { return r.json(); }),
-            fetch("/api/scanner/detections?limit=10").then(function(r) { return r.json(); }),
-            fetch("/api/scanner/active").then(function(r) { return r.json(); }),
-            fetch("/api/scanner/bookmarks").then(function(r) { return r.json(); }),
-        ])
-        .then(function(results) {
-            var state = results[0];
-            var detections = results[1];
-            var active = results[2];
-            var bookmarks = results[3];
+        // Fetch each endpoint independently — one failure shouldn't block others
+        fetch("/api/scanner").then(function(r) { return r.json(); })
+            .then(function(state) {
+                ActivityFeedView.updateState(state);
+                if (state.most_active) {
+                    ActivityFeedView.updateMostActive(state.most_active);
+                }
+            }).catch(function() {});
 
-            ActivityFeedView.updateState(state);
-            ActivityFeedView.updateRecent(detections.detections || []);
-            ActivityFeedView.updateActive(active.signals || []);
-            ActivityFeedView.updateBookmarks(bookmarks.bookmarks || []);
+        fetch("/api/scanner/detections?limit=10").then(function(r) { return r.json(); })
+            .then(function(data) {
+                ActivityFeedView.updateRecent(data.detections || []);
+            }).catch(function() {});
 
-            if (state.most_active) {
-                ActivityFeedView.updateMostActive(state.most_active);
-            }
-        })
-        .catch(function(err) {
-            console.error("[Scanner] Poll failed:", err);
-        });
+        fetch("/api/scanner/active").then(function(r) { return r.json(); })
+            .then(function(data) {
+                ActivityFeedView.updateActive(data.signals || []);
+            }).catch(function() {});
+
+        fetch("/api/scanner/bookmarks").then(function(r) { return r.json(); })
+            .then(function(data) {
+                ActivityFeedView.updateBookmarks(data.bookmarks || []);
+            }).catch(function() {});
     }
 
     function _toggleScan() {
