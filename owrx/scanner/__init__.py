@@ -346,12 +346,14 @@ class ScannerService:
             # Advance to next window
             self._sweeper.advance()
 
+    _adpcm_decoder = None
+    _recording_active = False
+
     def _auto_listen(self, freq_hz: int, mode: str):
         """Auto-hold on a signal to record real audio via DSP chain.
 
         Holds for listen_time seconds, then resumes scanning.
-        The DSP tap in connection.py starts/stops recording when
-        the scanner state transitions to/from LISTENING.
+        Recording is managed here (singleton) not per-connection.
         """
         logger.info("Scanner: auto-listen on %d %s for %.1fs",
                      freq_hz, mode, self._listen_time)
@@ -365,7 +367,10 @@ class ScannerService:
                 logger.exception("Scanner: retune for auto-listen failed")
                 return
 
-        # Transition to LISTENING — triggers DSP tap recording
+        # Start recording
+        self._start_recording(freq_hz, mode)
+
+        # Transition to LISTENING — triggers DSP chain tune in connection.py
         self.state.update(
             status=ScannerState.LISTENING,
             current_freq=freq_hz,
@@ -375,9 +380,52 @@ class ScannerService:
         # Hold for listen_time (interruptible by stop)
         self._stop_event.wait(self._listen_time)
 
-        # Resume scanning (triggers recording stop via state change)
+        # Stop recording and resume scanning
+        self._stop_recording()
         if not self._stop_event.is_set():
             self.state.update(status=ScannerState.SCANNING)
+
+    def _start_recording(self, freq_hz: int, mode: str):
+        """Start recording via the recorder singleton."""
+        if self._recorder is None:
+            return
+        try:
+            from owrx.scanner.adpcm import AdpcmDecoder
+            self._adpcm_decoder = AdpcmDecoder()
+            path = self._recorder.start_recording(freq_hz, mode)
+            self._recording_active = True
+            logger.info("Scanner: recording started: %s", path)
+        except Exception:
+            logger.exception("Scanner: failed to start recording")
+
+    def _stop_recording(self):
+        """Stop the current recording."""
+        if not self._recording_active:
+            return
+        if self._recorder is None:
+            return
+        try:
+            path = self._recorder.stop_recording()
+            self._recording_active = False
+            self._adpcm_decoder = None
+            logger.info("Scanner: recording stopped: %s", path)
+        except Exception:
+            logger.exception("Scanner: failed to stop recording")
+
+    def feed_audio(self, adpcm_data: bytes):
+        """Feed ADPCM audio data from the DSP chain into the recorder.
+
+        Called by connection.py's write_dsp_data when scanner is recording.
+        """
+        if not self._recording_active or self._adpcm_decoder is None:
+            return
+        if self._recorder is None:
+            return
+        try:
+            samples = self._adpcm_decoder.decode(adpcm_data)
+            self._recorder.write_audio(samples)
+        except Exception:
+            pass
 
     def _record_signal(self, freq_hz: int, mode: str) -> str | None:
         """Record a short audio clip for a detected signal.

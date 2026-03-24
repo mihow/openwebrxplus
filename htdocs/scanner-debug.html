@@ -352,9 +352,10 @@ header h1 {
       <div class="panel-actions">
         <button class="btn primary" id="btn-start" onclick="doCommand('start')">Start</button>
         <button class="btn" id="btn-stop" onclick="doCommand('stop')">Stop</button>
-        <button class="btn" onclick="doCommand('hold', {frequency: 91500000})">Hold 91.5</button>
-        <button class="btn" onclick="doCommand('hold', {frequency: 162550000})">Hold NOAA</button>
+        <button class="btn" onclick="doCommand('hold')" style="background:var(--yellow);color:var(--bg);border-color:var(--yellow);">Hold</button>
         <button class="btn" onclick="doCommand('skip')">Skip</button>
+        <button class="btn" onclick="doCommand('hold', {frequency: 91500000})">91.5</button>
+        <button class="btn" onclick="doCommand('hold', {frequency: 162550000})">NOAA</button>
         <input type="number" id="freq-input" placeholder="MHz" step="0.001" style="width:80px;font-family:var(--mono);font-size:11px;padding:5px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text);">
         <button class="btn" onclick="holdFreqInput()">Hold</button>
       </div>
