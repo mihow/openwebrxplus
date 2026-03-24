@@ -352,9 +352,11 @@ header h1 {
       <div class="panel-actions">
         <button class="btn primary" id="btn-start" onclick="doCommand('start')">Start</button>
         <button class="btn" id="btn-stop" onclick="doCommand('stop')">Stop</button>
-        <button class="btn" onclick="doCommand('hold', {frequency: 97100000})">Hold 97.1</button>
+        <button class="btn" onclick="doCommand('hold', {frequency: 91500000})">Hold 91.5</button>
         <button class="btn" onclick="doCommand('hold', {frequency: 162550000})">Hold NOAA</button>
         <button class="btn" onclick="doCommand('skip')">Skip</button>
+        <input type="number" id="freq-input" placeholder="MHz" step="0.001" style="width:80px;font-family:var(--mono);font-size:11px;padding:5px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text);">
+        <button class="btn" onclick="holdFreqInput()">Hold</button>
       </div>
     </div>
     <div class="panel-body">
@@ -495,7 +497,7 @@ function connect() {
         var msg = JSON.parse(e.data);
         handleJson(msg);
       } catch(err) {
-        log('text', 'tag-text', e.data.substring(0, 80));
+        // Don't log raw handshake/config text — too noisy
       }
     } else {
       stats.binary++;
@@ -507,13 +509,12 @@ function connect() {
           stats.bytes += data.length - 1;
           setPipe('pipe-binary', true);
           processAudio(data);
-          // Log first few audio messages, then every 100th
-          if (stats.audio <= 3 || stats.audio % 100 === 0) {
-            log('audio', 'tag-audio', '0x02 audio frame: ' + data.length + ' bytes (total: ' + stats.audio + ')');
+          // Log only first few and milestones
+          if (stats.audio <= 3 || stats.audio % 500 === 0) {
+            log('audio', 'tag-audio', '0x02 audio: ' + data.length + 'B (total: ' + stats.audio + ')');
           }
-        } else {
-          log('binary', 'tag-bin', 'Binary type=0x' + msgType.toString(16).padStart(2, '0') + ' len=' + data.length);
         }
+        // 0x01 = FFT data — don't log (too noisy)
       }
     }
     updateStats();
@@ -548,8 +549,9 @@ function handleJson(msg) {
       log('state', 'tag-state', 'LISTENING on ' + (msg.current_freq / 1e6).toFixed(3) + ' MHz ' + (msg.current_mode || ''));
     }
   } else if (msg.type === 'config') {
-    log('config', 'tag-text', 'Config received: samp_rate=' + (msg.samp_rate || '?'));
-  } else {
+    log('config', 'tag-text', 'Config: samp_rate=' + (msg.samp_rate || '?') + ' center=' + (msg.center_freq || '?'));
+  } else if (['smeter', 'cpuusage', 'temperature', 'clients', 'mode', 'secondary_mod'].indexOf(msg.type) === -1) {
+    // Skip noisy periodic messages, log everything else
     log('json', 'tag-text', msg.type + ': ' + JSON.stringify(msg).substring(0, 100));
   }
 }
@@ -764,6 +766,18 @@ function doCommand(cmd, params) {
     log('cmd-err', 'tag-err', 'WS not connected, cannot send: ' + cmd);
   }
 }
+
+function holdFreqInput() {
+  var mhz = parseFloat(document.getElementById('freq-input').value);
+  if (isNaN(mhz) || mhz <= 0) { log('cmd-err', 'tag-err', 'Invalid frequency'); return; }
+  doCommand('hold', { frequency: Math.round(mhz * 1e6) });
+}
+
+// Enter key in freq input
+document.addEventListener('DOMContentLoaded', function() {
+  var inp = document.getElementById('freq-input');
+  if (inp) inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') holdFreqInput(); });
+});
 
 // ============================================================
 // Recordings
