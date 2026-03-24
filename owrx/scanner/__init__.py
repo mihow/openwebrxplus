@@ -104,6 +104,8 @@ class ScannerService:
         self._retune_callback = None
         self._fft_callback = None
         self._dwell_time: float = 0.5
+        self._listen_time: float = 5.0
+        self._listen_threshold: float = 15.0
         self._bridge = None
         self._recorder: ScannerRecorder | None = None
 
@@ -155,6 +157,8 @@ class ScannerService:
         self._retune_callback = retune_callback
         self._fft_callback = fft_callback
         self._dwell_time = cfg["dwell_time"]
+        self._listen_time = cfg.get("listen_time", 5.0)
+        self._listen_threshold = cfg.get("listen_threshold", 15.0)
 
         self._sweeper = FrequencySweeper(
             freq_start=cfg["freq_start"],
@@ -298,6 +302,8 @@ class ScannerService:
                     self.state.update(active_signals=signals)
 
                     # Classify and log each detection
+                    best_sig = None
+                    best_snr = 0
                     for sig in signals:
                         if self._classifier is not None:
                             freq_hz = int(sig["frequency_hz"])
@@ -309,18 +315,6 @@ class ScannerService:
                             )
                             label = match_known_freq(freq_hz)
 
-                            # Record a marker tone for each detection so the log
-                            # has playable entries. Real audio recordings are made
-                            # via DSP tap when the scanner holds on a frequency.
-                            recording_path = None
-                            if self._recorder is not None:
-                                try:
-                                    recording_path = self._record_signal(
-                                        freq_hz, result["mode"],
-                                    )
-                                except Exception:
-                                    logger.exception("Recording failed for %d", freq_hz)
-
                             if self.db is not None:
                                 self.db.log_detection(
                                     frequency_hz=freq_hz,
@@ -331,11 +325,59 @@ class ScannerService:
                                     classification=result["classification"],
                                     filter_result=result["filter_result"],
                                     bookmark_label=label,
-                                    recording_path=recording_path,
                                 )
+
+                            # Track strongest signal for auto-hold
+                            if sig["snr_db"] > best_snr:
+                                best_snr = sig["snr_db"]
+                                best_sig = {
+                                    "frequency_hz": freq_hz,
+                                    "mode": result["mode"],
+                                }
+
+                    # Auto-hold on the strongest signal to record real audio
+                    # via the DSP chain tap in connection.py
+                    if best_sig and best_snr >= self._listen_threshold:
+                        self._auto_listen(
+                            best_sig["frequency_hz"],
+                            best_sig["mode"],
+                        )
 
             # Advance to next window
             self._sweeper.advance()
+
+    def _auto_listen(self, freq_hz: int, mode: str):
+        """Auto-hold on a signal to record real audio via DSP chain.
+
+        Holds for listen_time seconds, then resumes scanning.
+        The DSP tap in connection.py starts/stops recording when
+        the scanner state transitions to/from LISTENING.
+        """
+        logger.info("Scanner: auto-listen on %d %s for %.1fs",
+                     freq_hz, mode, self._listen_time)
+
+        # Retune SDR with offset tuning
+        if self._retune_callback:
+            tuning = self._calculate_offset_tuning(freq_hz)
+            try:
+                self._retune_callback(tuning["sdr_center"])
+            except Exception:
+                logger.exception("Scanner: retune for auto-listen failed")
+                return
+
+        # Transition to LISTENING — triggers DSP tap recording
+        self.state.update(
+            status=ScannerState.LISTENING,
+            current_freq=freq_hz,
+            current_mode=mode,
+        )
+
+        # Hold for listen_time (interruptible by stop)
+        self._stop_event.wait(self._listen_time)
+
+        # Resume scanning (triggers recording stop via state change)
+        if not self._stop_event.is_set():
+            self.state.update(status=ScannerState.SCANNING)
 
     def _record_signal(self, freq_hz: int, mode: str) -> str | None:
         """Record a short audio clip for a detected signal.

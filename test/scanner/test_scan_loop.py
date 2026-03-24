@@ -145,15 +145,13 @@ class TestScanLoop(unittest.TestCase):
         import os
         os.unlink(db_path)
 
-    def test_scan_loop_records_detected_signals(self):
-        """Scan loop should record audio when a signal is detected."""
-        import tempfile
-        from pathlib import Path
-        from owrx.scanner import ScannerService
+    def test_scan_loop_auto_listens_on_strong_signal(self):
+        """Scan loop should auto-hold on strong signals to record."""
+        from owrx.scanner import ScannerService, ScannerState
 
         svc = ScannerService()
 
-        # Synthetic FFT: strong signal at bins 500-520
+        # Synthetic FFT: strong signal at bins 500-520 (40 dB SNR)
         fft_data = np.full(1024, -90.0, dtype=np.float32)
         fft_data[500:520] = -50.0
 
@@ -164,41 +162,40 @@ class TestScanLoop(unittest.TestCase):
                 return None
             return fft_data
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            db_path = os.path.join(tmpdir, "test.db")
-            storage_path = os.path.join(tmpdir, "storage")
+        # Track state transitions
+        states_seen = []
+        def state_listener(state_dict):
+            states_seen.append(state_dict["status"])
 
-            svc.start(
-                config={
-                    "freq_start": 100_000_000,
-                    "freq_stop": 110_000_000,
-                    "sample_rate": 2_400_000,
-                    "dwell_time": 0.05,
-                    "fft_size": 1024,
-                    "db_path": db_path,
-                    "scanner_storage_path": storage_path,
-                },
-                retune_callback=lambda f: None,
-                fft_callback=mock_fft,
-            )
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+            db_path = f.name
 
-            time.sleep(1.5)
-            svc.stop()
+        svc.start(
+            config={
+                "freq_start": 100_000_000,
+                "freq_stop": 110_000_000,
+                "sample_rate": 2_400_000,
+                "dwell_time": 0.05,
+                "fft_size": 1024,
+                "db_path": db_path,
+                "listen_time": 0.5,  # short for testing
+                "listen_threshold": 10.0,
+            },
+            retune_callback=lambda f: None,
+            fft_callback=mock_fft,
+        )
+        svc.state.add_listener(state_listener)
 
-            detections = svc.db.get_recent_detections(limit=50)
-            assert len(detections) > 0, "Expected at least 1 detection"
+        time.sleep(3)
+        svc.stop()
 
-            # At least one detection should have a recording_path set
-            recordings = [d for d in detections if d.get("recording_path")]
-            assert len(recordings) > 0, (
-                "Expected at least 1 detection with recording_path"
-            )
+        # Should have detected signals and auto-listened
+        detections = svc.db.get_recent_detections(limit=50)
+        self.assertGreater(len(detections), 0, "Expected at least 1 detection")
 
-            # The recorded file should exist on disk
-            for d in recordings:
-                assert Path(d["recording_path"]).exists(), (
-                    f"Recording file missing: {d['recording_path']}"
-                )
+        # Should have transitioned through LISTENING at some point
+        self.assertIn("listening", states_seen,
+                       "Scanner should have auto-held on a signal")
 
     def test_scan_loop_no_recording_in_noise(self):
         """No recordings should be created when only noise is present."""

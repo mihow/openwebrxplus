@@ -102,6 +102,7 @@ class TestFullScannerPipeline(unittest.TestCase):
             config={
                 "db_path": ":memory:",
                 "dwell_time": 0.02,
+                "listen_time": 0.1,
                 "freq_start": 145_000_000,
                 "freq_stop": 163_000_000,
                 "sample_rate": 2_400_000,
@@ -112,7 +113,7 @@ class TestFullScannerPipeline(unittest.TestCase):
             fft_callback=fft_cb,
         )
 
-        time.sleep(0.5)
+        time.sleep(2.0)
         self.service.stop()
 
         detections = self.service.db.get_recent_detections(limit=100)
