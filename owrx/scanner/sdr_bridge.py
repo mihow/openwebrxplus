@@ -81,7 +81,9 @@ class SdrBridge(SdrSourceEventClient):
     def onStateChange(self, state: SdrSourceState):
         if state == SdrSourceState.RUNNING:
             self._start_fft()
-        elif state in (SdrSourceState.STOPPING, SdrSourceState.FAILED):
+        elif state == SdrSourceState.STOPPING:
+            self._stop_fft()
+        elif state == SdrSourceState.STOPPED:
             self._stop_fft()
 
     def onFail(self):

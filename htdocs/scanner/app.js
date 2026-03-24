@@ -104,11 +104,11 @@ var ScannerApp = (function() {
         switch (msg.type) {
             case "scanner_state":
                 ActivityFeedView.updateState(msg);
-                if (msg.state === "listening" && currentScreen === "activity-feed") {
+                if ((msg.state || msg.status) === "listening" && currentScreen === "activity-feed") {
                     // Auto-switch to listening view when scanner locks on
                     ListeningView.show(msg.current_freq, msg.current_mode, msg.current_label);
                 }
-                if (msg.state === "scanning" && currentScreen === "listening-view" && !ListeningView.held) {
+                if ((msg.state || msg.status) === "scanning" && currentScreen === "listening-view" && !ListeningView.held) {
                     // Return to feed when scanner resumes scanning
                     showScreen("activity-feed");
                 }
@@ -174,7 +174,8 @@ var ScannerApp = (function() {
         fetch("/api/scanner")
             .then(function(r) { return r.json(); })
             .then(function(state) {
-                if (state.state === "scanning" || state.state === "listening") {
+                var s = state.state || state.status;
+            if (s === "scanning" || s === "listening") {
                     sendCommand("stop");
                 } else {
                     sendCommand("start");

@@ -97,6 +97,11 @@ class ScannerCommandController(Controller):
             from owrx.sdr import SdrService
             sdr_source = SdrService.getFirstSource()
             if sdr_source is None:
+                # Try all sources (including inactive ones)
+                all_sources = SdrService.getAllSources()
+                if all_sources:
+                    sdr_source = list(all_sources.values())[0]
+            if sdr_source is None:
                 self.send_response(
                     json.dumps({"error": "no SDR source available"}),
                     content_type="application/json",

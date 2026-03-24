@@ -50,23 +50,24 @@ var ActivityFeedView = {
         if (!state) return;
 
         // Update status indicator
+        var s = state.state || state.status;
         this.statusDot.className = "status-dot";
-        if (state.state === "scanning") {
+        if (s === "scanning") {
             this.statusDot.classList.add("scanning");
-            this.statusText.textContent = "Scanning " + formatFreq(state.freq_start || 25e6) + "–" + formatFreq(state.freq_stop || 1700e6) + " MHz";
-        } else if (state.state === "listening") {
+            var freq = formatFreq(state.current_freq || 0);
+            var pct = state.scan_progress ? " (" + Math.round(state.scan_progress * 100) + "%)" : "";
+            this.statusText.textContent = "Scanning " + freq + " MHz" + pct;
+        } else if (s === "listening") {
             this.statusDot.classList.add("listening");
             this.statusText.textContent = "Listening " + formatFreq(state.current_freq || 0) + " MHz";
-        } else if (state.state === "paused") {
+        } else if (s === "paused") {
             this.statusDot.classList.add("paused");
             this.statusText.textContent = "Paused";
         } else {
             this.statusText.textContent = "Idle";
         }
 
-        if (state.progress !== undefined) {
-            this.statusText.textContent += " (" + Math.round(state.progress * 100) + "%)";
-        }
+        // progress is now shown inline in the scanning status text
     },
 
     updateActive: function(signals) {
