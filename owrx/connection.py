@@ -330,6 +330,9 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
 
                         if "params" in message:
                             params = message["params"]
+                            # offset_freq must be int for the DSP property validator
+                            if "offset_freq" in params:
+                                params["offset_freq"] = int(params["offset_freq"])
                             dsp.setProperties(params)
 
                 elif message["type"] == "setsdr":
