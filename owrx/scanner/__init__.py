@@ -9,10 +9,13 @@ import logging
 import threading
 import time
 
+import numpy as np
+
 from owrx.scanner.classifier import ClassificationPipeline
 from owrx.scanner.db import ScannerDatabase
 from owrx.scanner.detector import SignalDetector
 from owrx.scanner.known_freqs import match_known_freq
+from owrx.scanner.recorder import ScannerRecorder
 from owrx.scanner.sweep import FrequencySweeper
 
 logger = logging.getLogger(__name__)
@@ -102,6 +105,7 @@ class ScannerService:
         self._fft_callback = None
         self._dwell_time: float = 0.5
         self._bridge = None
+        self._recorder: ScannerRecorder | None = None
 
     def start_with_sdr(self, sdr_source, config: dict | None = None):
         """Start scanning using a live OpenWebRX+ SdrSource.
@@ -153,6 +157,16 @@ class ScannerService:
         self.db = ScannerDatabase(cfg["db_path"])
         self._session_id = self.db.start_session(cfg)
 
+        storage_path = cfg.get("scanner_storage_path")
+        if storage_path:
+            self._recorder = ScannerRecorder(
+                storage_path=storage_path,
+                sample_rate=cfg.get("scanner_recording_sample_rate", 12_000),
+                max_storage_mb=cfg.get("scanner_max_storage_mb", 10_240),
+                retention_days=cfg.get("scanner_retention_days", 30),
+                max_clip_sec=cfg.get("scanner_max_clip_sec", 300),
+            )
+
         self._stop_event.clear()
         self._hold_freq = None
         self.state.update(status=ScannerState.SCANNING)
@@ -173,6 +187,9 @@ class ScannerService:
         if self._session_id is not None and self.db is not None:
             self.db.stop_session(self._session_id)
             self._session_id = None
+        if self._recorder is not None:
+            self._recorder.stop_recording()
+            self._recorder = None
         self.state.update(status=ScannerState.IDLE)
         logger.info("Scanner stopped")
 
@@ -194,11 +211,15 @@ class ScannerService:
         elif self.state.current_freq:
             self._hold_freq = self.state.current_freq
 
-        # Retune SDR to the held frequency
+        # Retune SDR with offset to avoid DC spike
         if self._hold_freq and self._retune_callback:
             try:
-                self._retune_callback(self._hold_freq)
-                logger.info("Scanner: retuned SDR to %d for hold", self._hold_freq)
+                tuning = self._calculate_offset_tuning(self._hold_freq)
+                self._retune_callback(tuning["sdr_center"])
+                logger.info(
+                    "Scanner: retuned SDR to %d (offset %d) for signal %d",
+                    tuning["sdr_center"], tuning["offset_freq"], self._hold_freq,
+                )
             except Exception:
                 logger.exception("Scanner: retune for hold failed")
 
@@ -272,6 +293,17 @@ class ScannerService:
                                 snr_db=sig["snr_db"],
                             )
                             label = match_known_freq(freq_hz)
+
+                            # Record audio if recorder is configured
+                            recording_path = None
+                            if self._recorder is not None:
+                                try:
+                                    recording_path = self._record_signal(
+                                        freq_hz, result["mode"],
+                                    )
+                                except Exception:
+                                    logger.exception("Recording failed for %d", freq_hz)
+
                             if self.db is not None:
                                 self.db.log_detection(
                                     frequency_hz=freq_hz,
@@ -282,7 +314,48 @@ class ScannerService:
                                     classification=result["classification"],
                                     filter_result=result["filter_result"],
                                     bookmark_label=label,
+                                    recording_path=recording_path,
                                 )
 
             # Advance to next window
             self._sweeper.advance()
+
+    def _record_signal(self, freq_hz: int, mode: str) -> str | None:
+        """Record a short audio clip for a detected signal.
+
+        Generates a brief marker tone (the scan loop doesn't have IQ data).
+        Real audio recording happens in the DSP chain path (connection.py).
+        """
+        if self._recorder is None:
+            return None
+
+        path = self._recorder.start_recording(freq_hz, mode)
+
+        # Generate a 0.5-second marker tone at the detection frequency
+        # (modulo audible range) so recordings are distinguishable
+        sr = self._recorder.sample_rate
+        duration = 0.5
+        t = np.linspace(0, duration, int(sr * duration), endpoint=False)
+        tone_hz = 300 + (freq_hz % 700)  # map to 300-1000 Hz
+        samples = (0.3 * np.sin(2 * np.pi * tone_hz * t)).astype(np.float32)
+        self._recorder.write_audio(samples)
+        self._recorder.stop_recording()
+
+        return path
+
+    @staticmethod
+    def _calculate_offset_tuning(
+        signal_freq_hz: int, offset_hz: int = 100_000,
+    ) -> dict:
+        """Calculate SDR center frequency and DSP offset to avoid DC spike.
+
+        Retunes the SDR below the signal by offset_hz, so the signal appears
+        at a positive offset in the passband (away from the DC spike at center).
+
+        Returns dict with 'sdr_center' and 'offset_freq'.
+        """
+        sdr_center = signal_freq_hz - offset_hz
+        return {
+            "sdr_center": sdr_center,
+            "offset_freq": signal_freq_hz - sdr_center,  # == offset_hz
+        }
