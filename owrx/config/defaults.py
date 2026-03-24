@@ -447,5 +447,20 @@ defaultConfig = PropertyLayer(
     mqtt_chat=False,
     mqtt_wsjt=False,
     mqtt_aprs=False,
-    mqtt_ais=False
+    mqtt_ais=False,
+    # Scanner
+    scanner_enabled=False,
+    scanner_freq_start=25000000,
+    scanner_freq_stop=1700000000,
+    scanner_dwell_time_ms=300,
+    scanner_squelch_threshold=-1,
+    scanner_hang_time_ms=2000,
+    scanner_demod_mode="auto",
+    scanner_content_filter="any",
+    scanner_record_mode="filter_matches",
+    scanner_storage_path="/var/lib/openwebrx/recordings",
+    scanner_max_storage_mb=10240,
+    scanner_max_clip_sec=300,
+    scanner_retention_days=30,
+    scanner_recording_kbps=24,
 ).readonly()
