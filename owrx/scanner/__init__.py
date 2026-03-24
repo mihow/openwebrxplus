@@ -193,7 +193,14 @@ class ScannerService:
             self._hold_freq = freq_hz
         elif self.state.current_freq:
             self._hold_freq = self.state.current_freq
-        self.state.update(status=ScannerState.LISTENING)
+
+        # Update state with held frequency and appropriate mode
+        updates = {"status": ScannerState.LISTENING}
+        if self._hold_freq:
+            updates["current_freq"] = self._hold_freq
+            from owrx.scanner.sweep import demod_mode_for_freq
+            updates["current_mode"] = demod_mode_for_freq(self._hold_freq)
+        self.state.update(**updates)
 
     def _scan_loop(self):
         """Background thread: sweep, detect, classify, log."""
