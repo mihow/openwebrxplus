@@ -692,14 +692,19 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         params = message.get("params", {})
 
         if cmd == "start":
-            sdr_source = SdrService.getFirstSource()
-            if sdr_source:
-                service.start_with_sdr(sdr_source)
-                # Start the DSP chain so audio can flow when scanner locks on
-                self._ensureScannerDsp()
+            if service.state.status == "idle" and service._bridge is not None:
+                # Already initialized — just resume scanning from current position
+                service.resume_scanning()
+            elif service.state.status == "idle":
+                # First start — full init
+                sdr_source = SdrService.getFirstSource()
+                if sdr_source:
+                    service.start_with_sdr(sdr_source)
+            # Ensure DSP chain is ready for audio
+            self._ensureScannerDsp()
         elif cmd == "stop":
             service.stop()
-            self.stopDsp()
+            # Don't stopDsp — keep audio chain alive for resume
         elif cmd == "pause":
             service.pause()
         elif cmd == "resume":

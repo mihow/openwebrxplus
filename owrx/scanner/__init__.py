@@ -211,6 +211,17 @@ class ScannerService:
         self.state.update(status=ScannerState.IDLE)
         logger.info("Scanner stopped (position preserved)")
 
+    def resume_scanning(self):
+        """Resume scanning from current position (re-creates thread only)."""
+        if self._thread is not None:
+            return  # already running
+        self._stop_event.clear()
+        self._hold_freq = None
+        self.state.update(status=ScannerState.SCANNING)
+        self._thread = threading.Thread(target=self._scan_loop, daemon=True)
+        self._thread.start()
+        logger.info("Scanner resumed from current position")
+
     def pause(self):
         self.state.update(status=ScannerState.PAUSED)
 
