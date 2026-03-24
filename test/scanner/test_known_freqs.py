@@ -18,8 +18,8 @@ class TestMatchKnownFreq:
             (162_450_000, "NOAA WX3"),
             (162_475_000, "NOAA WX4 (Portland KIG77)"),
             (162_500_000, "NOAA WX5"),
-            (162_525_000, "NOAA WX6"),
-            (162_550_000, "NOAA WX7"),
+            (162_525_000, "NOAA WX6 (WNG604 Woodland)"),
+            (162_550_000, "NOAA WX7 (KIG98 Portland)"),
         ]
         for freq, label in noaa:
             assert match_known_freq(freq) == label, f"Failed for {freq}"
