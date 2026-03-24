@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONFIG = {
     "freq_start": 25_000_000,
     "freq_stop": 960_000_000,
-    "sample_rate": 2_400_000,
-    "fft_size": 1024,
+    "sample_rate": 8_000_000,
+    "fft_size": 4096,
     "snr_threshold_db": 10.0,
     "dwell_time": 0.5,
     "usable_bw_ratio": 0.8,
