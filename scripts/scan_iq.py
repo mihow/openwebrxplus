@@ -49,15 +49,25 @@ from owrx.scanner.sweep import demod_mode_for_freq
 
 # ---------- DSP ----------
 
-def extract_channel(iq, center_freq, signal_freq, sample_rate, channel_bw):
-    """Frequency-shift and decimate to extract a single channel."""
+def extract_channel(iq, center_freq, signal_freq, sample_rate, channel_bw,
+                     target_rate=None):
+    """Frequency-shift and decimate to extract a single channel.
+
+    If target_rate is given, choose decimation to produce a rate as close
+    to target_rate as possible (must evenly divide sample_rate).
+    """
     offset = signal_freq - center_freq
     t = np.arange(len(iq)) / sample_rate
     shifted = iq * np.exp(-1j * 2 * np.pi * offset * t)
-    decimation = max(1, int(sample_rate / channel_bw))
+    if target_rate and target_rate < sample_rate:
+        # Pick decimation that produces closest rate >= target
+        decimation = max(1, round(sample_rate / target_rate))
+    else:
+        decimation = max(1, int(sample_rate / channel_bw))
     dec_i = scipy_decimate(shifted.real, decimation)
     dec_q = scipy_decimate(shifted.imag, decimation)
-    return dec_i + 1j * dec_q, sample_rate // decimation
+    actual_rate = sample_rate / decimation
+    return dec_i + 1j * dec_q, int(round(actual_rate))
 
 
 def demod_fm(iq, sample_rate, deviation=5000):
@@ -71,6 +81,8 @@ def demod_fm(iq, sample_rate, deviation=5000):
     dt = 1.0 / sample_rate
     alpha = dt / (tau + dt)
     audio = lfilter([alpha], [1, -(1 - alpha)], audio)
+    # Remove DC offset
+    audio = audio - np.mean(audio)
     mx = np.max(np.abs(audio))
     if mx > 0:
         audio = audio / mx * 0.9
@@ -81,6 +93,8 @@ def demod_am(iq):
     """AM envelope detection."""
     envelope = np.abs(iq)
     audio = envelope - np.mean(envelope)
+    # Remove DC offset
+    audio = audio - np.mean(audio)
     mx = np.max(np.abs(audio))
     if mx > 0:
         audio = audio / mx * 0.9
@@ -197,37 +211,36 @@ def scan_iq_file(iq_path, center_freq, sample_rate, db, output_dir,
 
     # Demod
     os.makedirs(output_dir, exist_ok=True)
+    wav_files_produced = []
     for d in to_demod:
         freq = d["frequency_hz"]
         mode = d["mode"]
 
         if mode == "wfm":
-            channel_bw, deviation = 200000, 75000
+            channel_bw, deviation, target_rate = 200000, 75000, 48000
         elif mode == "nfm":
-            channel_bw, deviation = 16000, 5000
+            channel_bw, deviation, target_rate = 16000, 5000, 16000
         elif mode == "am":
-            channel_bw, deviation = 10000, 0
+            channel_bw, deviation, target_rate = 10000, 0, 16000
         else:
-            channel_bw, deviation = 16000, 5000
+            channel_bw, deviation, target_rate = 16000, 5000, 16000
 
-        ch_iq, ch_rate = extract_channel(iq, center_freq, freq, sample_rate, channel_bw)
+        ch_iq, ch_rate = extract_channel(
+            iq, center_freq, freq, sample_rate, channel_bw,
+            target_rate=target_rate,
+        )
 
         if mode in ("wfm", "nfm"):
             audio = demod_fm(ch_iq, ch_rate, deviation)
         else:
             audio = demod_am(ch_iq)
 
-        # Downsample WFM to 48 kHz
-        if mode == "wfm" and ch_rate > 48000:
-            dec = ch_rate // 48000
-            audio = scipy_decimate(audio, dec)
-            final_rate = ch_rate // dec
-        else:
-            final_rate = ch_rate
+        final_rate = ch_rate
 
         wav_name = f"{name}_{freq/1e6:.4f}mhz_{mode}.wav"
         wav_path = os.path.join(output_dir, wav_name)
         save_wav(wav_path, audio, final_rate)
+        wav_files_produced.append(wav_path)
 
         duration_sec = len(audio) / final_rate
         print(f"\n  Demod: {freq/1e6:.4f} MHz ({mode}) -> {wav_name}")
@@ -241,7 +254,7 @@ def scan_iq_file(iq_path, center_freq, sample_rate, db, output_dir,
                                     duration_sec=duration_sec)
                 break
 
-    return results
+    return results, wav_files_produced
 
 
 # ---------- CLI ----------
@@ -284,6 +297,7 @@ def main():
 
     total_detections = 0
     total_files = 0
+    all_wav_files = []
 
     for iq_file in args.iq_files:
         if not os.path.exists(iq_file):
@@ -298,13 +312,14 @@ def main():
             print(f"SKIP: {iq_file} (no center_freq or sample_rate — use --center-freq and --sample-rate, or provide .json sidecar)")
             continue
 
-        results = scan_iq_file(
+        results, wav_files = scan_iq_file(
             iq_file, center_freq, sample_rate, db, output_dir,
             demod_freq=args.demod_freq, demod_all=args.demod_all,
             snr_threshold=args.snr_threshold, merge_gap=args.merge_gap,
         )
         total_detections += len(results)
         total_files += 1
+        all_wav_files.extend(wav_files)
 
     db.stop_session(session_id)
     db.close()
@@ -315,11 +330,10 @@ def main():
     print(f"  Audio:    {output_dir}/")
     print(f"{'=' * 60}")
 
-    # Print playback commands
-    wav_files = sorted(Path(output_dir).glob("*.wav"))
-    if wav_files:
+    # Print playback commands for files produced THIS run only
+    if all_wav_files:
         print("\nPlay:")
-        for w in wav_files[-5:]:  # last 5
+        for w in all_wav_files[-5:]:
             print(f"  ffplay -nodisp -autoexit {w}")
 
 

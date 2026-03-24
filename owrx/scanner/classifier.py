@@ -57,15 +57,13 @@ class ClassificationPipeline:
         snr_db: float,
         audio_buffer: bytes | None = None,
     ) -> dict:
-        # Stage 1: mode detection — band plan, refined by bandwidth
+        # Stage 1: Mode auto-detect — frequency band is authoritative
         mode = demod_mode_for_freq(frequency_hz)
-        bw_mode = estimate_mode_from_bandwidth(bandwidth_hz)
-        # If band plan says wfm and bandwidth agrees, keep it; otherwise
-        # trust bandwidth for finer discrimination within a band.
-        if mode == bw_mode:
-            pass  # agreement
-        elif mode in ANALOG_MODES and bw_mode in ANALOG_MODES:
-            mode = bw_mode  # bandwidth is more specific
+
+        # Only upgrade to WFM if bandwidth evidence is strong
+        # (detected BW > 40 kHz suggests broadcast FM)
+        if bandwidth_hz and bandwidth_hz > 40000 and mode != "am":
+            mode = "wfm"
 
         # Stage 2: classification
         classification = "analog" if mode in ANALOG_MODES else "unknown"
