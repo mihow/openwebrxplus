@@ -44,6 +44,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from owrx.scanner.classifier import ClassificationPipeline
 from owrx.scanner.db import ScannerDatabase
 from owrx.scanner.detector import SignalDetector
+from owrx.scanner.known_freqs import match_known_freq
 from owrx.scanner.sweep import demod_mode_for_freq
 
 
@@ -174,11 +175,13 @@ def scan_iq_file(iq_path, center_freq, sample_rate, db, output_dir,
             filter_result=cls["filter_result"],
         )
 
+        known_label = match_known_freq(sig["frequency_hz"]) or ""
+        label_suffix = f"  [{known_label}]" if known_label else ""
         print(f"  [{i+1}] {sig['frequency_hz']/1e6:.4f} MHz  "
               f"BW={sig['bandwidth_hz']/1e3:.1f}kHz  "
               f"SNR={sig['snr_db']:.1f}dB  "
               f"mode={cls['mode']}  "
-              f"action={cls['action']}")
+              f"action={cls['action']}{label_suffix}")
 
         results.append({
             "det_id": det_id,

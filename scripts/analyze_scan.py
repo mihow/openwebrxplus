@@ -29,57 +29,8 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from owrx.scanner.known_freqs import match_known_freq
 from owrx.scanner.sweep import demod_mode_for_freq
-
-# Known frequencies for labeling
-KNOWN_FREQS = {
-    # NOAA Weather
-    162400000: "NOAA WX1",
-    162425000: "NOAA WX2",
-    162450000: "NOAA WX3",
-    162475000: "NOAA WX4 (Portland KIG77)",
-    162500000: "NOAA WX5",
-    162525000: "NOAA WX6",
-    162550000: "NOAA WX7",
-    # Portland FM
-    88300000: "KBVM Religious",
-    89100000: "KMHD Jazz",
-    89900000: "KQAC Classical",
-    90700000: "KBOO Community",
-    91500000: "KOPB OPB/NPR",
-    92300000: "KGON Classic Rock",
-    94700000: "KNRK Alternative",
-    95500000: "KBFF Top 40",
-    97100000: "KYCH Variety",
-    98700000: "KUPL Country",
-    99500000: "KWJJ Country",
-    100300000: "KKRZ Top 40",
-    101100000: "KXL News",
-    101900000: "KINK Indie",
-    103300000: "KKCW K103",
-    105100000: "KRSK Sports",
-    105900000: "KFBW Classic Rock",
-    107500000: "KXJM Hip-Hop",
-    # Air
-    121500000: "Air Emergency",
-    # Marine
-    156800000: "Marine Ch16",
-    # Ham
-    146520000: "2m Simplex",
-    446000000: "70cm Simplex",
-    # Portland repeaters
-    443150000: "Mount Scott Repeater?",
-    440400000: "W7RAT KOIN Tower",
-    442225000: "K7RPT KOIN Tower",
-}
-
-
-def match_known_freq(freq_hz, tolerance=10000):
-    """Match a frequency to a known label."""
-    for known_freq, label in KNOWN_FREQS.items():
-        if abs(freq_hz - known_freq) < tolerance:
-            return label
-    return None
 
 
 def analyze_detections(db_path):
