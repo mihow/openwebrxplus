@@ -1,0 +1,11 @@
+{
+  "name": "noaa_weather_162mhz",
+  "center_freq_hz": 162475000,
+  "sample_rate": 2400000,
+  "duration_sec": 5,
+  "format": "cf32",
+  "device": "SDRplay RSP1a",
+  "gain": 40,
+  "recorded_at": "2026-03-23T22:57:35-07:00",
+  "file_size_bytes": 96000000
+}

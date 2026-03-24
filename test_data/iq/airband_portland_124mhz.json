@@ -1,0 +1,11 @@
+{
+  "name": "airband_portland_124mhz",
+  "center_freq_hz": 124000000,
+  "sample_rate": 2400000,
+  "duration_sec": 5,
+  "format": "cf32",
+  "device": "SDRplay RSP1a",
+  "gain": 40,
+  "recorded_at": "2026-03-23T22:57:48-07:00",
+  "file_size_bytes": 96000000
+}
