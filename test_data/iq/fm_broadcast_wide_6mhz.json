@@ -1,0 +1,11 @@
+{
+  "name": "fm_broadcast_wide_6mhz",
+  "center_freq_hz": 97500000,
+  "sample_rate": 6000000,
+  "duration_sec": 3,
+  "format": "cf32",
+  "device": "SDRplay RSP1a",
+  "gain": 29,
+  "recorded_at": "2026-03-23T22:58:12-07:00",
+  "file_size_bytes": 144000000
+}

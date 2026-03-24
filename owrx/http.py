@@ -25,6 +25,15 @@ from owrx.controllers.session import SessionController
 from owrx.controllers.profile import ProfileController
 from owrx.controllers.imageupload import ImageUploadController
 from owrx.controllers.robots import RobotsController
+from owrx.controllers.scanner import (
+    ScannerPageController,
+    ScannerApiController,
+    ScannerDetectionsController,
+    ScannerActiveController,
+    ScannerBookmarksController,
+    ScannerCommandController,
+    ScannerRecordingController,
+)
 from owrx.storage import Storage
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -185,6 +194,13 @@ class Router(object):
             StaticRoute("/ban", ClientController, method="POST", options={"action": "ban"}),
             StaticRoute("/unban", ClientController, method="POST", options={"action": "unban"}),
             StaticRoute("/broadcast", ClientController, method="POST", options={"action": "broadcast"}),
+            StaticRoute("/scanner", ScannerPageController),
+            StaticRoute("/api/scanner", ScannerApiController),
+            StaticRoute("/api/scanner/detections", ScannerDetectionsController),
+            StaticRoute("/api/scanner/active", ScannerActiveController),
+            StaticRoute("/api/scanner/bookmarks", ScannerBookmarksController),
+            StaticRoute("/api/scanner/command", ScannerCommandController, method="POST"),
+            RegexRoute(r"^/api/scanner/recordings/(\d+)$", ScannerRecordingController),
         ]
 
     def find_route(self, request):

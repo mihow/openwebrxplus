@@ -330,6 +330,9 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
 
                         if "params" in message:
                             params = message["params"]
+                            # offset_freq must be int for the DSP property validator
+                            if "offset_freq" in params:
+                                params["offset_freq"] = int(params["offset_freq"])
                             dsp.setProperties(params)
 
                 elif message["type"] == "setsdr":
@@ -363,6 +366,11 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                             message["text"],
                             message["name"] if "name" in message else None
                         )
+
+                elif message["type"] == "scanner_subscribe":
+                    self._subscribeScannerState()
+                elif message["type"] == "scanner_command":
+                    self._handleScannerCommand(message)
 
             else:
                 logger.warning("received message without type: {0}".format(message))
@@ -454,6 +462,12 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         if self.bookmarkSub is not None:
             self.bookmarkSub.cancel()
             self.bookmarkSub = None
+        # Unsubscribe from scanner state updates
+        try:
+            from owrx.scanner import ScannerService
+            ScannerService.get_instance().state.remove_listener(self._onScannerStateChange)
+        except Exception:
+            pass
         super().close(error)
 
     def stopDsp(self):
@@ -475,6 +489,13 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
 
     def write_dsp_data(self, data):
         self.send(bytes([0x02]) + data)
+        # Feed audio to scanner recorder (singleton handles dedup)
+        try:
+            from owrx.scanner import ScannerService
+            service = ScannerService.get_instance()
+            service.feed_audio(data)
+        except Exception:
+            pass
 
     def write_hd_audio(self, data):
         self.send(bytes([0x04]) + data)
@@ -565,6 +586,152 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
             return res
 
         self.send({"type": "modes", "value": [to_json(m) for m in modes]})
+
+    # --- Scanner integration ---
+
+    def _subscribeScannerState(self):
+        """Subscribe this client to scanner state updates."""
+        from owrx.scanner import ScannerService
+        service = ScannerService.get_instance()
+        # Send current state immediately
+        self.write_scanner_state(service.state.to_dict())
+        # Register for future updates
+        service.state.add_listener(self._onScannerStateChange)
+
+    def _onScannerStateChange(self, state_dict):
+        """Called by ScannerState when state changes."""
+        try:
+            self.mp_send({"type": "scanner_state", **state_dict})
+        except Exception:
+            pass
+
+        status = state_dict.get("status")
+        try:
+            if status == "listening":
+                freq = state_dict.get("current_freq", 0)
+                mode = state_dict.get("current_mode", "nfm")
+                if freq:
+                    logger.info("Scanner: state->listening, tuning DSP to %d %s", freq, mode)
+                    self._tuneScannerDsp(freq, mode)
+            elif status in ("scanning", "idle"):
+                # Close squelch to silence audio between signals
+                dsp = self.getDsp()
+                if dsp is not None:
+                    dsp.setProperties({"squelch_level": 0})
+        except Exception:
+            logger.exception("Scanner: error handling state change to %s", status)
+
+    def _ensureScannerDsp(self):
+        """Ensure the DSP chain is started for scanner audio output."""
+        logger.info("Scanner: _ensureScannerDsp called, sdr=%s", self.sdr)
+        if self.sdr is None:
+            self.setSdr()
+            logger.info("Scanner: setSdr done, sdr=%s", self.sdr)
+        dsp = self.getDsp()
+        logger.info("Scanner: getDsp returned %s", dsp)
+        if dsp is not None:
+            # Set open squelch — scanner controls when to listen
+            dsp.setProperties({
+                "mod": "nfm",
+                "offset_freq": 0,
+                "squelch_level": -150,
+            })
+            dsp.start()
+            logger.info("Scanner: DSP chain started successfully")
+
+    def _tuneScannerDsp(self, signal_freq_hz: int, mode: str):
+        """Tune the DSP chain to demodulate a specific signal frequency."""
+        # Ensure DSP chain is set up first
+        self._ensureScannerDsp()
+        dsp = self.getDsp()
+        if dsp is None:
+            logger.warning("Scanner: getDsp() returned None, cannot tune")
+            return
+
+        # Calculate offset from SDR center frequency
+        # The SDR's center_freq is available in the DspManager's property stack
+        center_freq = 0
+        try:
+            center_freq = dsp.props["center_freq"]
+        except (KeyError, TypeError):
+            pass
+
+        if center_freq:
+            offset = int(signal_freq_hz - center_freq)
+        else:
+            offset = 0
+
+        logger.info("Scanner: tune signal=%d center=%d offset=%d mode=%s",
+                     signal_freq_hz, center_freq, offset, mode)
+
+        try:
+            dsp.setProperties({
+                "offset_freq": offset,
+                "mod": mode or "nfm",
+                "squelch_level": -150,
+            })
+        except Exception:
+            logger.exception("Scanner: setProperties failed, trying offset=0")
+            try:
+                dsp.setProperties({
+                    "offset_freq": 0,
+                    "mod": mode or "nfm",
+                    "squelch_level": -150,
+                })
+            except Exception:
+                logger.exception("Scanner: setProperties with offset=0 also failed")
+        logger.debug(
+            "Scanner DSP tuned: signal=%d center=%d offset=%d mode=%s",
+            signal_freq_hz, center_freq, offset, mode,
+        )
+
+    def _handleScannerCommand(self, message):
+        """Handle scanner commands from WebSocket."""
+        from owrx.scanner import ScannerService
+        service = ScannerService.get_instance()
+        cmd = message.get("command", "")
+        params = message.get("params", {})
+
+        if cmd == "start":
+            logger.info("Scanner cmd=start: status=%s bridge=%s sweeper=%s",
+                        service.state.status, service._bridge, service._sweeper)
+            if service.state.status == "idle" and service._bridge is not None:
+                # Already initialized — just resume scanning from current position
+                logger.info("Scanner: resuming from current position")
+                service.resume_scanning()
+            elif service.state.status == "idle":
+                # First start — full init
+                sdr_source = SdrService.getFirstSource()
+                if sdr_source:
+                    logger.info("Scanner: first start with SDR")
+                    service.start_with_sdr(sdr_source)
+            # Ensure DSP chain is ready for audio
+            self._ensureScannerDsp()
+        elif cmd == "stop":
+            service.stop()
+            # Don't stopDsp — keep audio chain alive for resume
+        elif cmd == "pause":
+            service.pause()
+        elif cmd == "resume":
+            service.resume()
+        elif cmd == "skip":
+            service.skip()
+        elif cmd == "hold":
+            freq = params.get("frequency")
+            service.hold(freq)
+            if freq is not None:
+                self._tuneScannerDsp(freq, service.state.current_mode)
+        elif cmd == "tune":
+            freq = params.get("frequency")
+            service.hold(freq)
+            if freq is not None:
+                self._tuneScannerDsp(freq, service.state.current_mode)
+
+        # Send updated state back
+        self.write_scanner_state(service.state.to_dict())
+
+    def write_scanner_state(self, state):
+        self.send({"type": "scanner_state", **state})
 
 
 class MapConnection(OpenWebRxClient):
