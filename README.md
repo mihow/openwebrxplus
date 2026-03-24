@@ -82,6 +82,70 @@ However, if you hold down the shift key, you can drag the center line (BFO) or t
 
 ## Licensing
 
+---
+
+## Scanner V2 Development Guide
+
+This fork adds a signal-driven radio scanner that sweeps the full SDR range, detects signals via FFT, classifies them, and logs everything to SQLite. See the [design spec](https://github.com/mihow/pi-sdr/pull/3) for full details.
+
+### Quick start
+
+```bash
+# Build rx_sdr for IQ recording (one-time)
+cd /tmp && git clone https://github.com/rxseger/rx_tools.git
+cd rx_tools && mkdir build && cd build && cmake .. && make
+
+# Record IQ files from SDRplay RSP1a
+cd /path/to/openwebrx+
+./scripts/record_bands.sh                     # all bands
+./scripts/record_bands.sh --band noaa         # just NOAA weather
+./scripts/record_bands.sh --band 70cm --duration 30
+
+# Scan IQ files (detect, classify, demod, save WAV)
+python3 scripts/scan_iq.py test_data/iq/*.cf32
+python3 scripts/scan_iq.py test_data/iq/file.cf32 --demod-all
+python3 scripts/scan_iq.py test_data/iq/file.cf32 --demod-freq 162550000
+
+# Analyze results
+python3 scripts/analyze_scan.py
+python3 scripts/analyze_scan.py --issues-only
+python3 scripts/analyze_scan.py --csv detections.csv
+
+# Run tests
+python3 -m pytest test/scanner/ -v
+```
+
+### Scanner modules
+
+| Module | Purpose |
+|--------|---------|
+| `owrx/scanner/detector.py` | FFT peak finding, noise floor tracking, signal merging |
+| `owrx/scanner/sweep.py` | Frequency window management, band-to-mode mapping |
+| `owrx/scanner/classifier.py` | Pluggable classification pipeline (mode, content filter, action) |
+| `owrx/scanner/db.py` | SQLite database for detections, bookmarks, sessions |
+| `owrx/scanner/known_freqs.py` | Known frequency database (Portland area) |
+| `owrx/scanner/config.py` | Scanner config key documentation |
+| `owrx/scanner/__init__.py` | ScannerService: background scan loop, state management |
+| `owrx/controllers/scanner.py` | REST API: `/api/scanner`, `/api/scanner/detections`, etc. |
+
+### Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/record_bands.sh` | Record IQ files from SDRplay across FM, NOAA, air, ham, GMRS, marine, HF |
+| `scripts/scan_iq.py` | Scan IQ files: detect → classify → log → demod → WAV |
+| `scripts/analyze_scan.py` | Audit scan results: mode mismatches, audio quality, duplicates |
+
+### SDRplay RSP1a notes
+
+- Use 6 MHz max sample rate for 14-bit ADC (>6 MHz drops to 12-bit, >8 MHz to 10-bit)
+- `sdrplay_apiService` must be running (only one instance, kill duplicates)
+- Gain is inverted: IFGR 20 = max gain, IFGR 59 = min gain
+- FM notch and DAB notch filters available in hardware
+- Docker needs `privileged: true` for USB re-enumeration
+
+---
+
 OpenWebRX is available under Affero GPL v3 license
 ([summary](https://tldrlegal.com/license/gnu-affero-general-public-license-v3-(agpl-3.0))).
 
