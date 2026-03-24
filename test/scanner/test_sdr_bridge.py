@@ -44,8 +44,9 @@ class TestScannerWithSdrBridge(unittest.TestCase):
         )
         service.stop()
 
-        self.assertTrue(mock.stopped)
-        self.assertIsNone(service._bridge)
+        # stop() preserves bridge and position for resume
+        self.assertFalse(mock.stopped, "stop() should not tear down bridge")
+        self.assertIsNotNone(service._bridge)
 
     def test_scan_loop_uses_retune_and_fft_callbacks(self):
         """Verify the scan loop calls retune and fft callbacks."""

@@ -389,7 +389,7 @@ header h1 {
     <div class="panel-header">
       <span class="panel-title">Audio Pipeline</span>
       <div class="panel-actions">
-        <button class="btn" id="btn-init-audio" onclick="initAudio()">Init Audio</button>
+        <button class="btn" id="btn-init-audio" onclick="toggleAudio()">Init Audio</button>
         <button class="btn" onclick="playTestTone()">Test Tone</button>
       </div>
     </div>
@@ -565,6 +565,22 @@ function handleJson(msg) {
 // ============================================================
 // Audio Pipeline
 // ============================================================
+function toggleAudio() {
+  var btn = document.getElementById('btn-init-audio');
+  if (audioCtx && audioCtx.state === 'running') {
+    audioCtx.suspend();
+    btn.textContent = 'Init Audio';
+    btn.classList.remove('primary');
+    setPipe('pipe-ctx', false);
+    setPipe('pipe-out', false);
+    log('audio', 'tag-audio', 'Audio suspended');
+    return;
+  }
+  initAudio();
+  btn.textContent = 'Mute';
+  btn.classList.add('primary');
+}
+
 function initAudio() {
   if (audioCtx) { audioCtx.resume(); return; }
 
@@ -601,8 +617,9 @@ function initAudio() {
   });
 
   drawWaveform();
-  document.getElementById('btn-init-audio').textContent = 'Audio Ready';
-  document.getElementById('btn-init-audio').disabled = true;
+  var btn = document.getElementById('btn-init-audio');
+  btn.textContent = 'Mute';
+  btn.classList.add('primary');
 }
 
 var fallbackBuf = new Float32Array(0);
@@ -813,8 +830,14 @@ function loadDetections() {
         label +
         ' &middot; ' + time + '</span>' +
         (d.recording_path && d.id ? '<button class="rec-play" data-id="' + d.id + '">&#9654;</button>' : '');
+      // Click frequency to hold
+      var freqEl = div.querySelector('.rec-freq');
+      if (freqEl) freqEl.style.cursor = 'pointer';
+      if (freqEl) freqEl.addEventListener('click', function() {
+        doCommand('hold', { frequency: d.frequency_hz });
+      });
       var btn = div.querySelector('.rec-play');
-      if (btn) btn.addEventListener('click', function() { playRecording(d.id, btn); });
+      if (btn) btn.addEventListener('click', function(e) { e.stopPropagation(); playRecording(d.id, btn); });
       list.appendChild(div);
     });
     log('det', 'tag-text', 'Loaded ' + dets.length + ' detections (' + withRec.length + ' with audio)');

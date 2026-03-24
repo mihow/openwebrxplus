@@ -160,13 +160,15 @@ class ScannerService:
         self._listen_time = cfg.get("listen_time", 5.0)
         self._listen_threshold = cfg.get("listen_threshold", 15.0)
 
-        self._sweeper = FrequencySweeper(
-            freq_start=cfg["freq_start"],
-            freq_stop=cfg["freq_stop"],
-            sample_rate=cfg["sample_rate"],
-            usable_bw_ratio=cfg["usable_bw_ratio"],
-            skip_ranges=cfg["skip_ranges"],
-        )
+        # Reuse existing sweeper to preserve scan position across stop/start
+        if self._sweeper is None:
+            self._sweeper = FrequencySweeper(
+                freq_start=cfg["freq_start"],
+                freq_stop=cfg["freq_stop"],
+                sample_rate=cfg["sample_rate"],
+                usable_bw_ratio=cfg["usable_bw_ratio"],
+                skip_ranges=cfg["skip_ranges"],
+            )
         self._detector = SignalDetector(
             fft_size=cfg["fft_size"],
             sample_rate=cfg["sample_rate"],
@@ -195,22 +197,19 @@ class ScannerService:
         logger.info("Scanner started (session %s)", self._session_id)
 
     def stop(self):
-        """Stop the scan loop and clean up."""
+        """Stop scanning but keep position and DSP chain alive.
+
+        Does NOT tear down the SDR bridge, sweeper, or DSP chain.
+        Restarting will resume from the current position.
+        """
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=5.0)
             self._thread = None
-        if self._bridge is not None:
-            self._bridge.stop()
-            self._bridge = None
-        if self._session_id is not None and self.db is not None:
-            self.db.stop_session(self._session_id)
-            self._session_id = None
-        if self._recorder is not None:
-            self._recorder.stop_recording()
-            self._recorder = None
+        self._stop_recording()
+        self._hold_freq = None
         self.state.update(status=ScannerState.IDLE)
-        logger.info("Scanner stopped")
+        logger.info("Scanner stopped (position preserved)")
 
     def pause(self):
         self.state.update(status=ScannerState.PAUSED)
