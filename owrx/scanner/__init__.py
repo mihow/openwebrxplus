@@ -309,10 +309,11 @@ class ScannerService:
                             )
                             label = match_known_freq(freq_hz)
 
-                            # Record marker tone if no live DSP recording
-                            # (live SDR recording happens in connection.py via DSP tap)
+                            # Record a marker tone for each detection so the log
+                            # has playable entries. Real audio recordings are made
+                            # via DSP tap when the scanner holds on a frequency.
                             recording_path = None
-                            if self._recorder is not None and self._bridge is None:
+                            if self._recorder is not None:
                                 try:
                                     recording_path = self._record_signal(
                                         freq_hz, result["mode"],
