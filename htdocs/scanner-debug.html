@@ -350,14 +350,11 @@ header h1 {
     <div class="panel-header">
       <span class="panel-title">Scanner State</span>
       <div class="panel-actions">
-        <button class="btn primary" id="btn-start" onclick="doCommand('start')">Start</button>
-        <button class="btn" id="btn-stop" onclick="doCommand('stop')">Stop</button>
+        <button class="btn primary" id="btn-startstop" onclick="toggleScanner()">Start</button>
         <button class="btn" onclick="doCommand('hold')" style="background:var(--yellow);color:var(--bg);border-color:var(--yellow);">Hold</button>
         <button class="btn" onclick="doCommand('skip')">Skip</button>
-        <button class="btn" onclick="doCommand('hold', {frequency: 91500000})">91.5</button>
-        <button class="btn" onclick="doCommand('hold', {frequency: 162550000})">NOAA</button>
         <input type="number" id="freq-input" placeholder="MHz" step="0.001" style="width:80px;font-family:var(--mono);font-size:11px;padding:5px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text);">
-        <button class="btn" onclick="holdFreqInput()">Hold</button>
+        <button class="btn" onclick="holdFreqInput()">Go</button>
       </div>
     </div>
     <div class="panel-body">
@@ -551,6 +548,8 @@ function handleJson(msg) {
     var dot = document.getElementById('status-dot');
     dot.className = 'status-indicator ' + st;
 
+    updateStartStopButton(st);
+
     if (st === 'listening') {
       log('state', 'tag-state', 'LISTENING on ' + (msg.current_freq / 1e6).toFixed(3) + ' MHz ' + (msg.current_mode || ''));
     }
@@ -565,23 +564,30 @@ function handleJson(msg) {
 // ============================================================
 // Audio Pipeline
 // ============================================================
+var audioActive = false;
+
 function toggleAudio() {
   var btn = document.getElementById('btn-init-audio');
-  if (audioCtx && audioCtx.state === 'running') {
-    audioCtx.suspend();
-    btn.textContent = 'Init Audio';
+  if (audioActive) {
+    // Mute: suspend context
+    if (audioCtx) audioCtx.suspend();
+    audioActive = false;
+    btn.textContent = '🔇 Unmute';
     btn.classList.remove('primary');
     setPipe('pipe-ctx', false);
     setPipe('pipe-out', false);
     log('audio', 'tag-audio', 'Audio suspended');
-    return;
+  } else {
+    // Activate audio
+    initAudio();
   }
-  initAudio();
-  btn.textContent = 'Mute';
-  btn.classList.add('primary');
 }
 
 function initAudio() {
+  audioActive = true;
+  var btn = document.getElementById('btn-init-audio');
+  btn.textContent = '🔊 Mute';
+  btn.classList.add('primary');
   if (audioCtx) { audioCtx.resume(); return; }
 
   var AC = window.AudioContext || window.webkitAudioContext;
@@ -617,9 +623,6 @@ function initAudio() {
   });
 
   drawWaveform();
-  var btn = document.getElementById('btn-init-audio');
-  btn.textContent = 'Mute';
-  btn.classList.add('primary');
 }
 
 var fallbackBuf = new Float32Array(0);
@@ -779,6 +782,32 @@ function drawWaveform() {
 // ============================================================
 // Scanner Commands
 // ============================================================
+var scannerRunning = false;
+
+function toggleScanner() {
+  if (scannerRunning) {
+    doCommand('stop');
+  } else {
+    doCommand('start');
+  }
+}
+
+function updateStartStopButton(state) {
+  var btn = document.getElementById('btn-startstop');
+  if (!btn) return;
+  var running = (state === 'scanning' || state === 'listening' || state === 'holding');
+  scannerRunning = running;
+  if (running) {
+    btn.textContent = 'Stop';
+    btn.classList.remove('primary');
+    btn.classList.add('danger');
+  } else {
+    btn.textContent = 'Start';
+    btn.classList.remove('danger');
+    btn.classList.add('primary');
+  }
+}
+
 function doCommand(cmd, params) {
   var msg = { type: 'scanner_command', command: cmd };
   if (params) msg.params = params;
