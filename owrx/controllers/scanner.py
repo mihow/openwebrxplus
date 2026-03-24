@@ -1,5 +1,12 @@
 import json
 from owrx.controllers import Controller
+from owrx.controllers.template import TemplateController
+
+
+class ScannerPageController(TemplateController):
+    """GET /scanner — serves the mobile scanner UI."""
+    def indexAction(self):
+        self.serve_template("scanner.html")
 
 
 class ScannerApiController(Controller):
@@ -28,7 +35,10 @@ class ScannerDetectionsController(Controller):
             except (ValueError, IndexError):
                 pass
         detections = service.db.get_recent_detections(limit=limit)
-        self.send_response(json.dumps(detections), content_type="application/json")
+        self.send_response(
+            json.dumps({"detections": detections}),
+            content_type="application/json",
+        )
 
 
 class ScannerActiveController(Controller):
@@ -46,7 +56,10 @@ class ScannerActiveController(Controller):
             except (ValueError, IndexError):
                 pass
         active = service.db.get_most_active(hours=hours)
-        self.send_response(json.dumps(active), content_type="application/json")
+        self.send_response(
+            json.dumps({"signals": active}),
+            content_type="application/json",
+        )
 
 
 class ScannerBookmarksController(Controller):
@@ -58,7 +71,10 @@ class ScannerBookmarksController(Controller):
             self.send_response(json.dumps([]), content_type="application/json")
             return
         bookmarks = service.db.get_all_bookmarks()
-        self.send_response(json.dumps(bookmarks), content_type="application/json")
+        self.send_response(
+            json.dumps({"bookmarks": bookmarks}),
+            content_type="application/json",
+        )
 
 
 class ScannerCommandController(Controller):
@@ -76,7 +92,10 @@ class ScannerCommandController(Controller):
             return
 
         command = body.get("command")
-        if command == "stop":
+        params = body.get("params", {})
+        if command == "start":
+            service.start()
+        elif command == "stop":
             service.stop()
         elif command == "pause":
             service.pause()
@@ -85,7 +104,9 @@ class ScannerCommandController(Controller):
         elif command == "skip":
             service.skip()
         elif command == "hold":
-            service.hold(body.get("frequency"))
+            service.hold(params.get("frequency") or body.get("frequency"))
+        elif command == "tune":
+            service.hold(params.get("frequency"))
         else:
             self.send_response(
                 json.dumps({"error": "unknown command: {}".format(command)}),

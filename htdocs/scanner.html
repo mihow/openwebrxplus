@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>Scanner</title>
+    <link rel="stylesheet" href="static/scanner/scanner.css">
+</head>
+<body>
+    <div id="app">
+        <div id="tap-overlay">
+            <div class="tap-content">
+                <div class="tap-icon">&#x25B6;</div>
+                <div class="tap-prompt">Tap to start</div>
+            </div>
+        </div>
+
+        <div id="activity-feed" class="screen active">
+            <header class="screen-header">
+                <div class="scan-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Idle</span>
+                </div>
+                <div class="scan-filter">Filter: Voice</div>
+            </header>
+
+            <section class="feed-section" id="active-now">
+                <h2>Active Now <button class="refresh-btn" title="Refresh">&#x21bb;</button></h2>
+                <div class="signal-list" id="active-list"></div>
+                <div class="empty-state">No active signals</div>
+            </section>
+
+            <section class="feed-section" id="recent-section">
+                <h2>Recent</h2>
+                <div class="signal-list" id="recent-list"></div>
+                <div class="empty-state">No recent detections</div>
+            </section>
+
+            <section class="feed-section" id="bookmarks-section">
+                <h2>Bookmarks</h2>
+                <div class="signal-list" id="bookmarks-list"></div>
+                <div class="empty-state">No bookmarks</div>
+            </section>
+
+            <section class="feed-section" id="most-active-section">
+                <h2>Most Active (24h)</h2>
+                <div class="signal-list" id="most-active-list"></div>
+                <div class="empty-state">No data yet</div>
+            </section>
+
+            <nav class="bottom-bar">
+                <button class="nav-btn" id="btn-scan" title="Start/Stop scan">Scan</button>
+                <button class="nav-btn" id="btn-log" title="Activity log">Log</button>
+                <button class="nav-btn" id="btn-settings" title="Settings">Settings</button>
+            </nav>
+        </div>
+
+        <div id="listening-view" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="btn-back">&larr; Back</button>
+            </header>
+
+            <div class="listen-content">
+                <div class="freq-display">
+                    <span class="freq-mhz" id="listen-freq">---</span>
+                    <span class="freq-unit">MHz</span>
+                    <span class="freq-mode" id="listen-mode">--</span>
+                </div>
+                <div class="freq-label" id="listen-label"></div>
+
+                <div class="signal-meter" id="signal-meter">
+                    <div class="meter-fill"></div>
+                </div>
+
+                <div class="tune-controls">
+                    <div class="tune-row">
+                        <button class="tune-btn" data-action="freq-down-coarse">&laquo;</button>
+                        <button class="tune-btn" data-action="freq-down">&lsaquo;</button>
+                        <span class="tune-label" id="tune-freq-label">---</span>
+                        <button class="tune-btn" data-action="freq-up">&rsaquo;</button>
+                        <button class="tune-btn" data-action="freq-up-coarse">&raquo;</button>
+                    </div>
+                    <div class="tune-row">
+                        <button class="tune-btn small" data-action="bw-down">&laquo;</button>
+                        <span class="tune-label small" id="tune-bw-label">BW</span>
+                        <button class="tune-btn small" data-action="bw-up">&raquo;</button>
+                    </div>
+                </div>
+
+                <div class="listen-actions">
+                    <button class="action-btn" id="btn-skip">Skip</button>
+                    <button class="action-btn" id="btn-hold">Hold</button>
+                    <button class="action-btn" id="btn-save">Save</button>
+                </div>
+
+                <div class="listen-status">
+                    <span class="status-dot"></span>
+                    <span id="listen-status-text">Idle</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="log-view" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="btn-log-back">&larr; Back</button>
+                <h1>Activity Log</h1>
+            </header>
+            <div class="log-filters">
+                <select id="log-filter-mode">
+                    <option value="">All modes</option>
+                    <option value="nfm">NFM</option>
+                    <option value="am">AM</option>
+                    <option value="wfm">WFM</option>
+                </select>
+                <select id="log-filter-class">
+                    <option value="">All types</option>
+                    <option value="voice">Voice</option>
+                    <option value="data">Data</option>
+                    <option value="unknown">Unknown</option>
+                </select>
+            </div>
+            <div class="log-list" id="log-list"></div>
+            <div class="empty-state">No detections logged</div>
+        </div>
+
+        <div id="settings-view" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="btn-settings-back">&larr; Back</button>
+                <h1>Settings</h1>
+            </header>
+            <div class="settings-form">
+                <div class="setting-group">
+                    <label>Scan Range</label>
+                    <div class="setting-row">
+                        <input type="number" id="set-freq-start" placeholder="Start MHz" step="0.1">
+                        <span>&ndash;</span>
+                        <input type="number" id="set-freq-stop" placeholder="Stop MHz" step="0.1">
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>Dwell Time (ms)</label>
+                    <input type="number" id="set-dwell" value="300" min="100" max="5000" step="50">
+                </div>
+                <div class="setting-group">
+                    <label>Hang Time (ms)</label>
+                    <input type="number" id="set-hang" value="2000" min="500" max="10000" step="500">
+                </div>
+                <div class="setting-group">
+                    <label>Classification Filter</label>
+                    <select id="set-filter">
+                        <option value="voice">Voice only</option>
+                        <option value="any">Any signal</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>Recording</label>
+                    <select id="set-recording">
+                        <option value="off">Off</option>
+                        <option value="filter_matches">Filter matches</option>
+                        <option value="all">All signals</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="static/scanner/audio.js"></script>
+    <script src="static/scanner/views.js"></script>
+    <script src="static/scanner/app.js"></script>
+</body>
+</html>

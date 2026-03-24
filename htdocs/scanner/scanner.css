@@ -1,0 +1,574 @@
+/* Scanner Mobile UI — dark theme, mobile-first */
+
+:root {
+    --bg: #0a0a0f;
+    --bg-card: #14141e;
+    --bg-hover: #1c1c2a;
+    --text: #e0e0e8;
+    --text-dim: #888899;
+    --accent: #4fc3f7;
+    --accent-dim: #2a7fa0;
+    --green: #66bb6a;
+    --red: #ef5350;
+    --orange: #ffa726;
+    --border: #2a2a3a;
+    --radius: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    height: 100%;
+    overflow: hidden;
+    touch-action: manipulation;
+}
+
+#app {
+    height: 100%;
+    position: relative;
+}
+
+/* --- Tap overlay --- */
+
+#tap-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    cursor: pointer;
+}
+
+#tap-overlay.hidden {
+    display: none;
+}
+
+.tap-content {
+    text-align: center;
+}
+
+.tap-icon {
+    font-size: 64px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.tap-prompt {
+    font-size: 20px;
+    color: var(--text-dim);
+}
+
+/* --- Screens --- */
+
+.screen {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 60px;
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.screen-header {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10;
+    min-height: 48px;
+}
+
+.screen-header h1 {
+    font-size: 17px;
+    font-weight: 600;
+}
+
+/* --- Status --- */
+
+.scan-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.status-dot.scanning {
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+}
+
+.status-dot.listening {
+    background: var(--accent);
+    animation: pulse 1s infinite;
+}
+
+.status-dot.paused {
+    background: var(--orange);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.scan-filter {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+/* --- Feed sections --- */
+
+.feed-section {
+    padding: 0 16px;
+    margin-top: 16px;
+}
+
+.feed-section h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.refresh-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.signal-list:empty + .empty-state {
+    display: block;
+}
+
+.empty-state {
+    display: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 8px 0;
+    font-style: italic;
+}
+
+/* --- Signal rows --- */
+
+.signal-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+    cursor: pointer;
+    gap: 12px;
+    min-height: 44px;
+}
+
+.signal-row:active {
+    background: var(--bg-hover);
+}
+
+.signal-freq {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 15px;
+    font-weight: 500;
+    min-width: 90px;
+}
+
+.signal-mode {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent);
+    min-width: 32px;
+}
+
+.signal-strength {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.signal-strength .bar {
+    width: 4px;
+    height: 12px;
+    background: var(--border);
+    border-radius: 1px;
+}
+
+.signal-strength .bar.active {
+    background: var(--green);
+}
+
+.signal-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.signal-time {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.signal-count {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+.signal-activity {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+}
+
+/* --- Bottom nav --- */
+
+.bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    padding: 8px 0;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 10;
+}
+
+.nav-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 8px;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.nav-btn:active {
+    color: var(--accent);
+}
+
+.nav-btn.active {
+    color: var(--accent);
+}
+
+/* --- Back button --- */
+
+.back-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px 8px;
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* --- Listening view --- */
+
+.listen-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    gap: 24px;
+    flex: 1;
+}
+
+.freq-display {
+    text-align: center;
+}
+
+.freq-mhz {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 40px;
+    font-weight: 300;
+    letter-spacing: -0.5px;
+}
+
+.freq-unit {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-left: 4px;
+}
+
+.freq-mode {
+    display: inline-block;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-left: 12px;
+    padding: 2px 8px;
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+}
+
+.freq-label {
+    font-size: 14px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+/* --- Signal meter --- */
+
+.signal-meter {
+    width: 100%;
+    max-width: 300px;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.meter-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--green), var(--accent));
+    border-radius: 4px;
+    transition: width 0.15s ease;
+}
+
+/* --- Tune controls --- */
+
+.tune-controls {
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tune-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tune-btn {
+    width: 48px;
+    height: 44px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tune-btn.small {
+    width: 40px;
+    height: 36px;
+    font-size: 16px;
+}
+
+.tune-btn:active {
+    background: var(--bg-hover);
+    border-color: var(--accent-dim);
+}
+
+.tune-label {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 14px;
+    color: var(--text-dim);
+    min-width: 100px;
+    text-align: center;
+}
+
+.tune-label.small {
+    font-size: 12px;
+    min-width: 80px;
+}
+
+/* --- Listen actions --- */
+
+.listen-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 320px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.action-btn:active {
+    background: var(--bg-hover);
+}
+
+.action-btn.held {
+    border-color: var(--orange);
+    color: var(--orange);
+}
+
+.listen-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+/* --- Log view --- */
+
+.log-filters {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+}
+
+.log-filters select {
+    flex: 1;
+    padding: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 44px;
+}
+
+.log-list {
+    padding: 0 16px;
+}
+
+.log-entry {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+    gap: 12px;
+    min-height: 44px;
+}
+
+.log-time {
+    font-size: 12px;
+    color: var(--text-dim);
+    min-width: 50px;
+}
+
+.log-freq {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 14px;
+}
+
+.log-mode {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.log-duration {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+.log-play {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 18px;
+    cursor: pointer;
+    min-width: 32px;
+    min-height: 32px;
+}
+
+/* --- Settings --- */
+
+.settings-form {
+    padding: 16px;
+}
+
+.setting-group {
+    margin-bottom: 16px;
+}
+
+.setting-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-form input,
+.settings-form select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 15px;
+    min-height: 44px;
+}
+
+.settings-form input:focus,
+.settings-form select:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+}
