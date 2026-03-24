@@ -100,6 +100,31 @@ class ScannerService:
         self._retune_callback = None
         self._fft_callback = None
         self._dwell_time: float = 0.5
+        self._bridge = None
+
+    def start_with_sdr(self, sdr_source, config: dict | None = None):
+        """Start scanning using a live OpenWebRX+ SdrSource.
+
+        Creates an SdrBridge to connect to the SDR's FftChain and
+        provides retune/fft callbacks automatically.
+        """
+        from owrx.scanner.sdr_bridge import SdrBridge
+
+        cfg = {**DEFAULT_CONFIG, **(config or {})}
+        fft_size = cfg.get("fft_size", 1024)
+
+        self._bridge = SdrBridge(sdr_source, fft_size=fft_size)
+        self._bridge.start()
+
+        # Override sample_rate from actual hardware
+        cfg["sample_rate"] = self._bridge.get_sample_rate()
+
+        self.start(
+            sdr_source=sdr_source,
+            config=cfg,
+            retune_callback=self._bridge.retune,
+            fft_callback=self._bridge.get_fft,
+        )
 
     def start(self, sdr_source=None, config: dict | None = None,
               retune_callback=None, fft_callback=None):
@@ -141,6 +166,9 @@ class ScannerService:
         if self._thread is not None:
             self._thread.join(timeout=5.0)
             self._thread = None
+        if self._bridge is not None:
+            self._bridge.stop()
+            self._bridge = None
         if self._session_id is not None and self.db is not None:
             self.db.stop_session(self._session_id)
             self._session_id = None

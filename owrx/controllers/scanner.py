@@ -94,7 +94,15 @@ class ScannerCommandController(Controller):
         command = body.get("command")
         params = body.get("params", {})
         if command == "start":
-            service.start()
+            from owrx.sdr import SdrService
+            sdr_source = SdrService.getFirstSource()
+            if sdr_source is None:
+                self.send_response(
+                    json.dumps({"error": "no SDR source available"}),
+                    content_type="application/json",
+                )
+                return
+            service.start_with_sdr(sdr_source)
         elif command == "stop":
             service.stop()
         elif command == "pause":
