@@ -569,17 +569,23 @@ var audioActive = false;
 function toggleAudio() {
   var btn = document.getElementById('btn-init-audio');
   if (audioActive) {
-    // Mute: suspend context
-    if (audioCtx) audioCtx.suspend();
+    // Mute: set gain to 0 (more reliable than suspend)
+    if (gainNode) gainNode.gain.value = 0;
     audioActive = false;
     btn.textContent = '🔇 Unmute';
     btn.classList.remove('primary');
-    setPipe('pipe-ctx', false);
-    setPipe('pipe-out', false);
-    log('audio', 'tag-audio', 'Audio suspended');
+    log('audio', 'tag-audio', 'Audio muted');
   } else {
-    // Activate audio
-    initAudio();
+    // Unmute / init
+    if (audioCtx && gainNode) {
+      gainNode.gain.value = 1.0;
+      audioActive = true;
+      btn.textContent = '🔊 Mute';
+      btn.classList.add('primary');
+      log('audio', 'tag-audio', 'Audio unmuted');
+    } else {
+      initAudio();
+    }
   }
 }
 

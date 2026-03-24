@@ -613,10 +613,11 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                 if freq:
                     logger.info("Scanner: state->listening, tuning DSP to %d %s", freq, mode)
                     self._tuneScannerDsp(freq, mode)
-            elif status == "scanning":
+            elif status in ("scanning", "idle"):
+                # Close squelch to silence audio between signals
                 dsp = self.getDsp()
                 if dsp is not None:
-                    dsp.setProperties({"offset_freq": 0, "squelch_level": -150})
+                    dsp.setProperties({"squelch_level": 0})
         except Exception:
             logger.exception("Scanner: error handling state change to %s", status)
 
@@ -692,13 +693,17 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         params = message.get("params", {})
 
         if cmd == "start":
+            logger.info("Scanner cmd=start: status=%s bridge=%s sweeper=%s",
+                        service.state.status, service._bridge, service._sweeper)
             if service.state.status == "idle" and service._bridge is not None:
                 # Already initialized — just resume scanning from current position
+                logger.info("Scanner: resuming from current position")
                 service.resume_scanning()
             elif service.state.status == "idle":
                 # First start — full init
                 sdr_source = SdrService.getFirstSource()
                 if sdr_source:
+                    logger.info("Scanner: first start with SDR")
                     service.start_with_sdr(sdr_source)
             # Ensure DSP chain is ready for audio
             self._ensureScannerDsp()
