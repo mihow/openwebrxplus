@@ -3,3 +3,5 @@
 tags
 .idea
 packages
+.pytest_cache
+**/__pycache__
